@@ -184,3 +184,43 @@ div#mapView {
   white-space:nowrap;
   overflow:hidden;
 }
+
+div#layerButtons {
+    float:right;
+    margin-top:8px;
+}
+
+.layer-button {
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.pointButtonOffImg {
+    border: none !important;
+    background: #252525 url('../img/points_24.png') no-repeat center center;
+}
+
+.heatButtonOffImg {
+    border: none !important;
+    background: #252525 url('../img/heat_16.png') no-repeat center center;
+}
+
+.pointButtonOnImg {
+    border: none !important;
+    background: #eee url('../img/points_24.png') no-repeat center center;
+}
+
+.heatButtonOnImg {
+    border: none !important;
+    background: #eee url('../img/heat_16.png') no-repeat center center;
+}
+
+
+
+
+
+
+
+

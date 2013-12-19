@@ -423,7 +423,7 @@ var Click = {
       defaultHandlerOptions: {
         'single': true,
          'double': false,
-         'pixelTolerance': 0,
+         'pixelTolerance': 10,
          'stopSingle': false,
          'stopDouble': false
         },

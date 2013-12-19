@@ -2,7 +2,10 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>map-D Tweetmap Mobile</title>
+        <link rel="icon" 
+          type="image/png" 
+          href="img/favicons/d_hyper_webtab.png">
+        <title>mapD Tweetmap Mobile</title>
         <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
         <meta name="apple-mobile-web-app-capable" content="yes">
@@ -50,7 +53,14 @@
         <div id="mapView">
           <div id="map"></div>
           <button id="curLoc"></button>
-          <div id="bottomBar"></div>
+          <div id="bottomBar">
+            <!--
+            <div id="layerButtons">
+              <button id="pointButton" class="layer-button pointButtonOnImg" title="Pointmap"></button>
+              <button id="heatButton" class="layer-button heatButtonOffImg" title="Heatmap"></button>
+              -->
+          </div>
+        </div>
         <script>
             init();
         </script>
