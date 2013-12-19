@@ -1,0 +1,59 @@
+
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>map-D Tweetmap Mobile</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <link rel="stylesheet" href="css/mobile.css" type="text/css">
+        <link rel="stylesheet" href="css/map.css" type="text/css">
+        <script src="http://maps.google.com/maps/api/js?sensor=false"></script>
+        <script src="http://ajax.googleapis.com/ajax/libs/jquery/2.0.0/jquery.min.js"></script>
+
+
+        <script src="lib/OpenLayers.js"></script>
+        <script src="js/olext.js"></script>
+        <script src="js/mobile.js"></script>
+    </head>
+    <body>
+        <h1 id="title">Basic Mobile Example</h1>
+        <div id="tags">
+            mobile
+        </div>
+        <p id="shortdesc">
+            A basic full-screen map for mobile devices.
+        </p>
+        <div id="topBar">
+          <div id="promo"><a href="http://www.map-d.com" target="_blank"><img src="img/mapd_logo.png" class="logo-image"></a></div>
+          <form id="search" class="search">
+            <div id="terms" class="search">
+              <input id="termsInput" class="search-input" type="text" name="terms" placeholder=" What"/>
+              <span class="iconClear">X</span>
+            </div>
+
+            <div id="user" class="search">
+              <input id="userInput" class="search-input" type="text" name="user" placeholder=" Who"/>
+              <span class="iconClear">X</span>
+            </div>
+            <div id="location" class="search">
+              <input id="zoomInput" class="search-input" type="text" name="zoom" placeholder=" Where"/>
+              <span class="iconClear">X</span>
+            </div>
+            <button id="submit" class="search-input" type="submit">
+              <div id="submit-icon" class="sprites search"></div>
+            </button>
+          </form>
+          
+
+        </div>
+        <div id="mapView">
+          <div id="map"></div>
+          <button id="curLoc"></button>
+        <div id="bottomBar"></div>
+        <script>
+            init();
+        </script>
+    </body>
+</html>
+
