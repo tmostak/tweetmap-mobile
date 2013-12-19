@@ -155,3 +155,32 @@ div#mapView {
     display: none;
 }
 
+.click-popup {
+  font-size: 13px !important;
+}
+.click-header {
+  padding: 0 0 3px 0;
+}
+
+.click-content {
+  margin: 0;
+  padding:0;
+  color: #555;
+}
+
+.click-content > a { 
+  color: #0084b4;
+}
+.popup-profile {
+  float: left;
+  font-weight: bold !important;
+  font-size: 16px;
+  color: #222;
+}
+
+.popup-time {
+  color: #777;
+  margin-left: 50%;
+  white-space:nowrap;
+  overflow:hidden;
+}
