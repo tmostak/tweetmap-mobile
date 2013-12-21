@@ -81,3 +81,10 @@ div.olMapViewport {
     padding:5px;
     overflow: auto;
 }
+
+div#settingsButton {
+    margin-left:10px;
+    margin-top:8px;
+}
+
+

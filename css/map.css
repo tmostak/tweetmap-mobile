@@ -1,13 +1,63 @@
-html, body {
+html, body, {
     margin  : 0;
     padding : 0;
     height  : 100%;
     width   : 100%;
+    font-family: 'Helvetica Neue', Arial, Helvetica, sans-serif;
+}
+
+/*
+#mapPage, #mapPage .ui-content, #mapContent {
+    width: 100%;
+    height: 100%;
+}
+*/
+
+#mapPage {
+    width: 100%;
+    height: 100%;
 }
 @media only screen and (max-width: 600px) {
-    html, body {
+    html, body{
         height  : 117%;
     }
+}
+
+
+#settingsOverlay {
+    position: fixed;
+    top: 40px;
+    bottom:40px;
+    left: 0;
+    width: 50%;
+    height: 100%;
+    background-color: #000;
+    filter:alpha(opacity=80);
+    -moz-opacity:0.8;
+    -khtml-opacity: 0.8;
+    opacity: 0.8;
+    z-index: 10000;
+    display: none;
+}
+
+.settings-group {
+    border-bottom: 3px solid white;
+    font-family: 'Helvetica Neue', Arial, Helvetica, sans-serif;
+    color: white;
+    width: 100%;
+}
+
+.main-setting {
+    height:40px;
+    padding-top:20px;
+    padding-left:10px;
+}
+
+.main-setting span {
+    margin-top:30px;
+    font-weight: bold;
+
+
 }
 
 div#topBar { 
@@ -34,6 +84,11 @@ div#bottomBar {
   background-image: linear-gradient(#4f4f4f, #232323);
   webkit-box-shadow: 2px 0 3px rgba(0,0,0,.25);
   box-shadow: 2px 0 3px rgba(0,0,0,.25);
+}
+
+form#search {
+    float:left;
+    //margin-right:20px;
 }
 
 .search { 
@@ -127,6 +182,18 @@ span.iconClear:hover{
     border-radius: 6px;
 }
 
+button#settingsButton {
+    background: rgba(0,60,136,0.7) url('../img/gear-24.png') no-repeat center center;
+    border: none !important;
+    position:absolute;
+    left:0px;
+    bottom: 30px;
+    width: 30px;
+    height: 60px;
+    z-index:10000;
+    border-radius: 0px 6px 6px 0px;
+}
+
 div#mapView {
   position: fixed;
   top: 40px;
@@ -216,6 +283,7 @@ div#layerButtons {
     border: none !important;
     background: #eee url('../img/heat_16.png') no-repeat center center;
 }
+
 
 
 

@@ -1,6 +1,4 @@
-// initialize map when page ready
-var map;
-var baseLayers;
+$(document).ready(function() {init()});
 
 // Get rid of address bar on iphone/ipod
 var fixSize = function() {
@@ -12,8 +10,6 @@ var fixSize = function() {
         }
     }
 };
-setTimeout(fixSize, 700);
-setTimeout(fixSize, 1500);
 
 function buildURI(params) {
   var uri = '';
@@ -28,6 +24,8 @@ var Map = {
 
 
   init: function() {
+
+
   var darkBlueStyle = [ { featureType: "all", elementType: "all", stylers: [ {visibility: "on" }, {saturation: -62}, {hue: "#00c3ff"}, {"gamma": 0.27}, {lightness: -65} ] } ];
   var darkMap = new OpenLayers.Layer.Google("Dark", {type: 'styled'}, {isBaseLayer:true});
   var styledMapOptions = {
@@ -83,6 +81,40 @@ var Vars = {
 var Settings = {
   pointOn: true,
   heatOn: false,
+  overlayVisible: false,
+  settingsOverlay: null,
+  settingsButton: null,
+
+  init: function(settingsOverlay, settingsButton) {
+    this.settingsOverlay = settingsOverlay;
+    this.settingsButton = settingsButton;
+
+    $(settingsButton).click($.proxy(function() {
+      this.overlayVisible = !this.overlayVisible;
+      if (this.overlayVisible) {
+        var overlayWidth = $(this.settingsOverlay).width();
+        $(this.settingsButton).css({left: overlayWidth});
+        $(this.settingsOverlay).show();
+      }
+      else {
+        $(this.settingsButton).css({left: 0});
+        $(this.settingsOverlay).hide();
+      }
+    },this));
+  },
+
+  resizeOverlay: function() {
+    var pageWidth = $("#mapView").width();
+    var overlayWidth = Math.min(pageWidth*0.5,500);
+    console.log("Overlay: " + overlayWidth);
+    $(this.settingsOverlay).width(overlayWidth);
+    if (this.overlayVisible)
+        $(this.settingsButton).css({left: overlayWidth});
+  }
+
+  
+
+
 };
 
 var MapD = {
@@ -109,12 +141,35 @@ var MapD = {
 
   init: function () {
     $(window).resize($.proxy(this.resize,this));
+      setTimeout(fixSize, 700);
+      setTimeout(fixSize, 1500);
     this.vars = Vars;
     this.settings = Settings;
+    this.settings.init($("#settingsOverlay"), $("#settingsButton"));
     this.curData = this.vars.datasets[this.vars.selectedVar];
     this.map = Map;
     this.map.init();
     this.resize();
+
+    /*
+  $("#menuLeft").buildMbExtruder({
+    positionFixed:true,
+    width:150,
+    sensibility:800,
+    position:"left", // left, right, bottom
+    extruderOpacity:1.0,
+    flapDim:300,
+    textOrientation:"bt", // or "tb" (top-bottom or bottom-top)
+              onExtOpen:function(){},
+    onExtContentLoad:function(){},
+    onExtClose:function(){},
+    hidePanelsOnClose:true,
+    autoCloseTime:0, // 0=never
+    slideTimer:300
+  });
+  */
+
+
     this.geoCoder = GeoCoder;
     this.geoCoder.init();
     this.search = Search;
@@ -165,6 +220,7 @@ var MapD = {
       $("#termsInput").show();
     }
     MapD.map.canvas.updateSize();
+    MapD.settings.resizeOverlay();
   },
 
   parseQueryExpression: function(str) {
