@@ -85,23 +85,29 @@ var Settings = {
   heatOn: false,
   heatToggled: false,
   overlayVisible: false,
+  overlayWidth:0,
   settingsOverlay: null,
   settingsButton: null,
 
   init: function(settingsOverlay, settingsButton) {
     this.settingsOverlay = settingsOverlay;
     this.settingsButton = settingsButton;
+    this.resizeOverlay();
 
     $(settingsButton).click($.proxy(function() {
       this.overlayVisible = !this.overlayVisible;
       if (this.overlayVisible) {
+        this.openOverlay();
+        /*
         var overlayWidth = $(this.settingsOverlay).width();
         $(this.settingsButton).css({left: overlayWidth});
-        $(this.settingsOverlay).show();
+        */
+        //$(this.settingsOverlay).show();
       }
       else {
-        $(this.settingsButton).css({left: 0});
-        $(this.settingsOverlay).hide();
+        this.closeOverlay();
+        //$(this.settingsButton).css({left: 0});
+        //$(this.settingsOverlay).hide();
       }
     },this));
 
@@ -145,14 +151,43 @@ var Settings = {
 
   },
 
+  openOverlay: function() {
+    //$(this.settingsButton).css({left: this.overlayWidth});
+    $(this.settingsButton).animate({left: this.overlayWidth}, {duration:200, queue:false});
+    //$(this.settingsOverlay).show().animate({},{duration:200,queue:false});
+    //$(this.settingsOverlay).slideDown(200);
+    $(this.settingsOverlay).animate({
+      width: this.overlayWidth + 'px'},
+      {duration:200, queue: false});
+    $(".settings-group").show();
+      //width(this.overlayWidth);
+  },
+
+  closeOverlay: function() {
+    $(this.settingsButton).animate({left: 0}, {duration:200, queue:false});
+   ///$(this.settingsOverlay).slideUp(200);
+    $(this.settingsOverlay).animate({
+      width: "0px"},
+      {duration:200})
+    $(".settings-group").hide();
+
+    //$(this.settingsOverlay).hide();
+  },
+
   resizeOverlay: function() {
     var pageWidth = $("#mapView").width();
-    var overlayWidth = Math.min(pageWidth*0.5,500);
-    console.log("Overlay: " + overlayWidth);
-    $(this.settingsOverlay).width(overlayWidth);
+    this.overlayWidth = Math.min(pageWidth*0.5,500);
+    //$(this.settingsOverlay).width(this.overlayWidth);
+    if (this.overlayVisible)
+      this.openOverlay();
+    //console.log("Overlay: " + overlayWidth);
+    //$(this.settingsOverlay).width(overlayWidth);
+    /*
     if (this.overlayVisible)
         $(this.settingsButton).css({left: overlayWidth});
+    */
   },
+
   toggleHeatmap: function(hasTermQuery) {
     if (this.heatToggled == false) {
       Settings.heatOn = hasTermQuery;
