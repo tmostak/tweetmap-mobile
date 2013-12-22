@@ -56,8 +56,10 @@ html, body, {
 .main-setting span {
     margin-top:30px;
     font-weight: bold;
+}
 
-
+.setting-on {
+   background-color:#13ADFE;
 }
 
 div#topBar { 

@@ -26,14 +26,14 @@ var Map = {
   init: function() {
 
 
-  var darkBlueStyle = [ { featureType: "all", elementType: "all", stylers: [ {visibility: "on" }, {saturation: -62}, {hue: "#00c3ff"}, {"gamma": 0.27}, {lightness: -65} ] } ];
+  var darkBlueStyle = [ { featureType: "all", elementType: "all", stylers: [ {visibility: "on" }, {saturation: -62}, {hue: "#00c3ff"}, {"gamma": 0.27}, {lightness: -55} ] } ];
   var darkMap = new OpenLayers.Layer.Google("Dark", {type: 'styled'}, {isBaseLayer:true});
   var styledMapOptions = {
-    name: "Dark Map"
+    name: "Dark"
   };
     var styledMapType = new google.maps.StyledMapType(darkBlueStyle,styledMapOptions);
   var blankMap = new OpenLayers.Layer.OSM("Blank","data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=")
-    baseLayers = new Array(darkMap, blankMap, new OpenLayers.Layer.Google("Google Roadmap", {type: google.maps.MapTypeId.ROADMAP}, {isBaseLayer:true, transitionEffect: 'resize'}));
+    baseLayers = new Array(blankMap, darkMap, new OpenLayers.Layer.Google("Google Roadmap", {type: google.maps.MapTypeId.ROADMAP}, {isBaseLayer:true, transitionEffect: 'resize'}));
 
     this.canvas = new OpenLayers.Map({
         div: "map",
@@ -79,8 +79,11 @@ var Vars = {
  
 
 var Settings = {
-  pointOn: true,
+  mapD: MapD,
+  baseOn: false,
+  pointOn: false,
   heatOn: false,
+  heatToggled: false,
   overlayVisible: false,
   settingsOverlay: null,
   settingsButton: null,
@@ -101,6 +104,45 @@ var Settings = {
         $(this.settingsOverlay).hide();
       }
     },this));
+
+    $(".main-setting").click(function(e) {
+      console.log(this);
+      $(this).toggleClass("setting-on");
+      var id = $(this).attr('id');
+      if (id == "baseStatus") {
+        Settings.baseOn = !Settings.baseOn;
+        if (Settings.baseOn) {
+          Map.canvas.setBaseLayer(Map.canvas.getLayersByName("Dark")[0]);
+        Map.canvas.fractionalZoom = false;
+        }
+        else {
+          Map.canvas.setBaseLayer(Map.canvas.getLayersByName("Blank")[0]);
+        Map.canvas.fractionalZoom = true;
+        }
+      }
+      else if (id == "pointStatus") {
+        Settings.pointOn = !Settings.pointOn;
+        if (Settings.pointOn)
+          MapD.services.pointMap.layer.setVisibility(true);
+        else
+          MapD.services.pointMap.layer.setVisibility(false);
+      }
+      else if (id == "heatStatus") {
+        Settings.heatToggled = true;
+        Settings.heatOn = !Settings.heatOn;
+        if (Settings.heatOn) {
+
+          MapD.services.heatMap.layer.setVisibility(true);
+        }
+        else {
+          MapD.services.heatMap.layer.setVisibility(false);
+        }
+      }
+      
+      console.log(e);
+
+    });
+
   },
 
   resizeOverlay: function() {
@@ -110,9 +152,20 @@ var Settings = {
     $(this.settingsOverlay).width(overlayWidth);
     if (this.overlayVisible)
         $(this.settingsButton).css({left: overlayWidth});
-  }
-
-  
+  },
+  toggleHeatmap: function(hasTermQuery) {
+    if (this.heatToggled == false) {
+      Settings.heatOn = hasTermQuery;
+      if (hasTermQuery) {
+          $("#heatStatus").addClass("setting-on");
+          MapD.services.heatMap.layer.setVisibility(true);
+        }
+        else {
+          $("#heatStatus").removeClass("setting-on");
+          MapD.services.heatMap.layer.setVisibility(false);
+        }
+      }
+  },
 
 
 };
@@ -175,10 +228,13 @@ var MapD = {
     this.search = Search;
     this.search.init($("#curLoc"), this.geoCoder);
     this.services.pointMap = PointMap;
+    this.services.heatMap = HeatMap;
     this.getTimeBounds();
     this.services.click = Click;
     this.services.click.init();
-    //this.heatMap = heatMap;
+
+
+
   },
 
   setQueryTerms: function(queryTerms) {
@@ -371,6 +427,16 @@ var MapD = {
         minId = options.minId; 
     }
     if (splitQuery) {
+       var queryArray = new Array(2);
+       queryArray[0] = this.termsAndUserQuery;
+        if (queryArray[0] != "") {
+          queryArray[0] = queryArray[0].substr(0, queryArray[0].length-5);
+        }
+        queryArray[1] = this.getTimeQuery(timeStart, timeEnd);
+        if (queryArray[1])
+          queryArray[1] = " where " + queryArray[1].substr(0, queryArray[1].length-5);
+
+        return queryArray;
     }
     else {
       var whereQuery ="";
@@ -388,6 +454,7 @@ var MapD = {
 
   reload: function(e) {
     this.services.pointMap.reload();
+    this.services.heatMap.reload();
   },
 
   getTimeRangeURL: function() {
@@ -414,6 +481,9 @@ var MapD = {
 
   initMaps: function() {
     this.services.pointMap.init();
+    this.services.heatMap.init();
+    $("#baseStatus").click();
+    $("#pointStatus").click();
   },
 
 };
@@ -634,6 +704,8 @@ var Search = {
         this.geoCoder.geocode(this.zoomTo);
         return false;
       }
+      var hasQuery = terms != "" || user != "";
+      this.mapD.settings.toggleHeatmap(terms != "");
       this.mapD.reload();
       return false;
 
@@ -656,14 +728,66 @@ var Search = {
 
      }
 
-
-
-
 };
+
+
+var HeatMap = {
+  mapD: MapD,
+  layer: null,
+  params: {
+    request: "GetMap",
+    sql: null,
+    bbox: null,
+    width: null,
+    height: null,
+    layers: "heatmap",
+    maxval: "auto", 
+    min: 0.2,
+    blur: 25,
+    level: 50,
+    colorramp: "green_red",
+    format: "image/png",
+    transparent: true
+  },
+  init: function () {
+     this.layer = new OpenLayers.Layer.WMS("Heat Map", this.mapD.host, this.getParams(), {singleTile: true, opacity: 0.55, ratio: 1.0, "displayInLayerSwitcher": false, removeBackBufferDelay: 0});
+    if (this.mapD.settings.heatOn) {
+      this.layer.setVisibility(true);
+    }
+    else {
+      this.layer.setVisibility(false);
+    }
+    this.mapD.map.canvas.addLayer(this.layer);
+  },
+
+  getParams: function(options) {
+    if (options == undefined || options == null) 
+      options = {splitQuery: true};
+    else
+      options.splitQuery = true;
+
+    this.params.sql = "select " + MapD.curData.x + "," + MapD.curData.y;
+
+    var queryArray = this.mapD.getWhere(options);
+    if (queryArray[0])
+      this.params.sql += "," + queryArray[0];
+    this.params.sql += " from " + this.mapD.curData.table + queryArray[1];
+
+    if (options.heatMax != undefined && options.heatMax != null && isNaN(options.heatMax) == false) 
+      this.params.maxval = options.heatMax;
+    else
+      this.params.maxval = "auto"; 
+    return this.params;
+  },
+
+  reload: function(options) {
+    this.layer.mergeNewParams(this.getParams(options));
+  }
+};
+
 
 var PointMap = {
   mapD:MapD,
-  wms: null,
   layer: null,
   baseSql: null,
   params: {
@@ -684,9 +808,14 @@ var PointMap = {
 
   init: function () {
     this.baseSql = "select " + MapD.curData.x + "," + MapD.curData.y +" from " + MapD.curData.table;
-    this.layer = new OpenLayers.Layer.WMS("Point Map", this.mapD.host, this.getParams(), {singleTile: true, ratio: 1.0, "dispalyInLayerSwitcher": false, removeBackBufferDelay: 0});
+    this.layer = new OpenLayers.Layer.WMS("Point Map", this.mapD.host, this.getParams(), {singleTile: true, ratio: 1.0, "displayInLayerSwitcher": false, removeBackBufferDelay: 0});
+    if (this.mapD.settings.pointOn) {
+      this.layer.setVisibility(true);
+    }
+    else {
+      this.layer.setVisibility(false);
+    }
     this.mapD.map.canvas.addLayer(this.layer);
-    this.layer.setVisibility(true);
   },
 
   getParams: function(options) {
