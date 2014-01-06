@@ -223,6 +223,7 @@ var MapD = {
     settings: null,
     pointMap: null,
     heatMap: null,
+    timeChart: null,
     search: null,
     click: null,
   },
@@ -264,12 +265,19 @@ var MapD = {
     this.search.init($("#curLoc"), this.geoCoder);
     this.services.pointMap = PointMap;
     this.services.heatMap = HeatMap;
+    this.services.timeChart = LineChart;
+    this.services.timeChart.init(d3.select($("#timeBar").get(0)));
     this.getTimeBounds();
+    //this.services.timeChart.reload();
     this.services.click = Click;
     this.services.click.init();
 
 
 
+  },
+
+  onMapMove: function() {
+    this.services.timeChart.reload();
   },
 
   setQueryTerms: function(queryTerms) {
@@ -310,7 +318,20 @@ var MapD = {
       $("input.search-input").width(inputWidth);
       $("#termsInput").show();
     }
+    var windowHeight = $(window).height();
+    console.log("Window height: " + windowHeight);
+    var timeBarHeight = Math.round(Math.min(windowHeight * 0.2, 70));
+    console.log("Time Bar Height: " + timeBarHeight);
+    $("#mapView").css({bottom:timeBarHeight});
+    $("#timeBar").css({height:timeBarHeight});
+
     MapD.map.canvas.updateSize();
+    $('div#timeBar').empty();
+    if (this.services.timeChart != null) {
+      this.services.timeChart.init(d3.select($("#timeBar").get(0)));
+      this.services.timeChart.reload();
+    }
+
     MapD.settings.resizeOverlay();
   },
 
@@ -490,6 +511,7 @@ var MapD = {
   reload: function(e) {
     this.services.pointMap.reload();
     this.services.heatMap.reload();
+    //this.services.timeChart.reload();
   },
 
   getTimeRangeURL: function() {
@@ -519,6 +541,8 @@ var MapD = {
     this.services.heatMap.init();
     $("#baseStatus").click();
     $("#pointStatus").click();
+    this.services.timeChart.reload();
+    this.map.canvas.events.register('moveend', this, this.onMapMove);
   },
 
 };
@@ -865,6 +889,193 @@ var PointMap = {
     this.layer.mergeNewParams(this.getParams(options));
   }
 };
+
+var LineChart = 
+{
+  mapD:MapD,
+  container: null,
+  contWidth: null,
+  contHeight: null,
+  svg: null,
+  series: [],
+  margins: null,
+  brushExtent: null,
+  xScale: null,
+  yScale: null,
+  xAxis: null,
+  yAxis: null,
+  seriesId: 0,
+  params: {
+    request: "Graph",
+    sql: null,
+    bbox: null,
+    histStart: null,
+    histEnd:null,
+    histBins: 100
+  },
+
+  colors: ["#3366cc", "#dc3912", "#ff9900", "#109618", "#990099", "#3b3eac", "#0099c6", "#dd4477", "#66aa00", "#b82e2e", "#316395", "#994499", "#22aa99", "#aaaa11", "#6633cc", "#e67300"],
+  
+
+  init: function(container) {
+    this.container = container;
+    var cont =  $($(container).get(0));
+    this.contWidth = cont.width();
+    this.contHeight = cont.height();
+    this.margin = {top: 10, right: 15, bottom: 25, left: 60};
+    this.width = this.contWidth - this.margin.left - this.margin.right;
+    this.height = this.contHeight - this.margin.top - this.margin.bottom;
+    this.xScale = d3.time.scale().range([0, this.width]);
+    this.yScale = d3.scale.linear().range([this.height,0]);
+
+    this.xAxis = d3.svg.axis()
+        .scale(this.xScale)
+        .orient("bottom")
+        .tickPadding(6)
+        .ticks(4);
+
+    this.yAxis = d3.svg.axis()
+        .scale(this.yScale)
+        .orient("left")
+        .tickSize(-this.width)
+        .tickPadding(6)
+        .ticks(2);
+
+    this.svg= this.container
+      .attr("class", "chart")
+      .append("svg")
+      .attr("width", this.contWidth - this.margin.right)
+      .attr("height", this.contHeight)
+      .attr("class", "line-chart")
+      .append("g")
+        .attr("transform", "translate(" + this.margin.left + "," + this.margin.top + ")"); 
+
+      this.svg.append("g")
+          .attr("class", "y axis");
+
+      this.svg.append("g")
+          .attr("class", "x axis")
+          .attr("transform", "translate(0," + this.height + ")");
+  },
+
+  getXDomain: function() {
+    var xDomain = [d3.min(this.series, function(s) { return s.xDomain[0] }), 
+                   d3.max(this.series, function(s) { return s.xDomain[1]})];
+    //xDomain[1] = new Date(xDomain[1].getTime() + 60 *30000);
+    return xDomain;
+  },
+
+  getYDomain: function() {
+    var yDomain = [d3.min(this.series, function(s) { return s.yDomain[0] }), 
+                   d3.max(this.series, function(s) { return s.yDomain[1] })];
+    return yDomain;
+  },
+
+
+  addSeries: function(id,name,data,frameStart,frameEnd) {
+    var xDomain = d3.extent(data, function(d) { return d.date; });
+    var yDomain = d3.extent(data, function(d) { return d.value; });
+
+    var xScale = this.xScale;
+    var yScale = this.yScale;
+
+    var line = d3.svg.line()
+        .interpolate("monotone")
+        .x(function(d) { return xScale(d.date); })
+        .y(function(d) { return yScale(d.value); });
+
+    var color = this.colors[0];
+    this.series.push({id: id, name: name, xDomain: xDomain, yDomain: yDomain, data: data, line: line, color: color});
+    this.xScale.domain(this.getXDomain());
+    this.yScale.domain(this.getYDomain());
+    console.log(this.getYDomain());
+    console.log(data);
+    this.svg.insert("path", "rect.pane")
+        .attr("class", "line")
+        .attr("id", "line" + id)
+        .attr("clip-path", "url(#clip)")
+        .style("stroke", color)
+        .data([data]);
+
+    this.draw();
+  },
+
+  draw: function() {
+    var svg = this.svg;
+    svg.select("g.x.axis").call(this.xAxis);
+    svg.select("g.y.axis").call(this.yAxis);
+    this.series.forEach(function(d) {svg.select("path.line#line" + d.id).attr("d", d.line)});
+    //this.prevXDomain = this.xScale.domain().slice(0);
+  },
+
+  reload: function() {
+
+    
+    var options = {time: {timeStart: this.mapD.dataStart, timeEnd: this.mapD.dataEnd}};
+    $.getJSON(this.getURL(options)).done($.proxy(this.onData, this, this.mapD.timeStart, this.mapD.timeEnd, this.mapD.queryTerms, true));
+  },
+
+  getURL: function(options) {
+    this.params.sql = "select " + this.mapD.curData.time + " ";
+    if (options == undefined || options == null) 
+      options = {splitQuery: true};
+    else 
+      options.splitquery = true;
+    //debugger;
+    var queryArray = this.mapD.getWhere(options);
+    //if (queryArray[0])
+    //  this.params.sql += "," + queryArray[0];
+    this.params.sql += " from " + this.mapD.curData.table;// + queryArray[1];
+    this.params.histStart = this.mapD.dataStart;
+    this.params.histStart = this.mapD.dataEnd;
+    if (options && options.time) {
+      this.params.histStart = options.time.timeStart;
+      this.params.histEnd = options.time.timeEnd;
+    }
+    this.params.bbox = this.mapD.map.canvas.getExtent().toBBOX();
+    var url = this.mapD.host + '?' + buildURI(this.params);
+    return url;
+ },
+
+  removeAllSeries: function() {
+    this.seriesId = 0;
+    this.series = [];
+    //this.colorUsed = {}; 
+    //this.lastZoomTime = 0;
+    this.svg.selectAll("path.line").data([]).exit().remove();
+    //this.elems.svg.selectAll("g.focus").data([]).exit().remove();
+    //this.elems.info.selectAll("g.legend").data([]).exit().remove();
+    //this.elems.detailsDiv.selectAll("li.detail-container").data([]).exit().remove();
+  },
+
+
+   onData: function(frameStart, frameEnd, queryTerms, clear, json) {
+    if (clear) {
+      this.removeAllSeries();
+    }
+    var series = [];
+    if ("y" in json) { // means we have percent
+      for (i in json.x) {
+        var time  = json.x[i];
+        var percent = json.y[i] * 100.0;
+        if (json.count[i] > 0)
+          series.push({date: new Date(time * 1000), value: percent});
+      }
+    }
+    else {
+      for (i in json.x) {
+        var time  = json.x[i];
+        //time = time - 4 * 60 * 60; // hack: original data set is ahead by 4 hours.
+        var count = json.count[i];
+        series.push({date: new Date(time * 1000), value: count});
+      }
+    }
+    this.addSeries(this.seriesId, queryTerms, series, frameStart, frameEnd);
+    this.seriesId += 1;
+   }
+}
+
+
 
 function init() {
   MapD.init();
