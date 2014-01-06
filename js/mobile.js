@@ -488,9 +488,13 @@ var MapD = {
         if (queryArray[0] != "") {
           queryArray[0] = queryArray[0].substr(0, queryArray[0].length-5);
         }
-        queryArray[1] = this.getTimeQuery(timeStart, timeEnd);
-        if (queryArray[1])
-          queryArray[1] = " where " + queryArray[1].substr(0, queryArray[1].length-5);
+        if ("noTime" in options)
+          queryArray[1] = "";
+        else {
+          queryArray[1] = this.getTimeQuery(timeStart, timeEnd);
+          if (queryArray[1])
+            queryArray[1] = " where " + queryArray[1].substr(0, queryArray[1].length-5);
+        }
 
         return queryArray;
     }
@@ -511,7 +515,7 @@ var MapD = {
   reload: function(e) {
     this.services.pointMap.reload();
     this.services.heatMap.reload();
-    //this.services.timeChart.reload();
+    this.services.timeChart.reload();
   },
 
   getTimeRangeURL: function() {
@@ -539,7 +543,7 @@ var MapD = {
   initMaps: function() {
     this.services.pointMap.init();
     this.services.heatMap.init();
-    $("#baseStatus").click();
+    //$("#baseStatus").click();
     $("#pointStatus").click();
     this.services.timeChart.reload();
     this.map.canvas.events.register('moveend', this, this.onMapMove);
@@ -753,7 +757,7 @@ var Search = {
       var terms = this.termsInput.val();
       var user = this.userInput.val(); 
       var zoomTo = this.zoomInput.val();
-      this.zoomToChanged = this.zoomTo != zoomTo;
+      this.zoomToChanged = zoomTo != "" && this.zoomTo != zoomTo;
       //this.mapD.setQueryTerms(terms);
       //this.mapD.setUser(user);
       this.mapD.setTermsAndUserQuery(terms,user);
@@ -922,7 +926,7 @@ var LineChart =
     var cont =  $($(container).get(0));
     this.contWidth = cont.width();
     this.contHeight = cont.height();
-    this.margin = {top: 10, right: 15, bottom: 25, left: 60};
+    this.margin = {top: 10, right: 15, bottom: 25, left: 45};
     this.width = this.contWidth - this.margin.left - this.margin.right;
     this.height = this.contHeight - this.margin.top - this.margin.bottom;
     this.xScale = d3.time.scale().range([0, this.width]);
@@ -972,9 +976,12 @@ var LineChart =
   },
 
 
-  addSeries: function(id,name,data,frameStart,frameEnd) {
+  addSeries: function(id,name,data,frameStart,frameEnd,dataFormat) {
     var xDomain = d3.extent(data, function(d) { return d.date; });
     var yDomain = d3.extent(data, function(d) { return d.value; });
+    var abbrFormat = d3.format("1s");
+    if (dataFormat == "percents")
+      abbrFormat = d3.format(".2%"); 
 
     var xScale = this.xScale;
     var yScale = this.yScale;
@@ -996,7 +1003,7 @@ var LineChart =
         .attr("clip-path", "url(#clip)")
         .style("stroke", color)
         .data([data]);
-
+    this.yAxis.tickFormat(abbrFormat);
     this.draw();
   },
 
@@ -1018,14 +1025,18 @@ var LineChart =
   getURL: function(options) {
     this.params.sql = "select " + this.mapD.curData.time + " ";
     if (options == undefined || options == null) 
-      options = {splitQuery: true};
-    else 
-      options.splitquery = true;
+      options = {splitQuery: true, noTime: true};
+    else  {
+      options.splitQuery = true;
+      options.noTime = true;
+    }
     //debugger;
     var queryArray = this.mapD.getWhere(options);
-    //if (queryArray[0])
-    //  this.params.sql += "," + queryArray[0];
-    this.params.sql += " from " + this.mapD.curData.table;// + queryArray[1];
+    console.log("query array");
+    console.log(queryArray);
+    if (queryArray[0] != "")
+      this.params.sql += "," + queryArray[0];
+    this.params.sql += " from " + this.mapD.curData.table + queryArray[1];
     this.params.histStart = this.mapD.dataStart;
     this.params.histStart = this.mapD.dataEnd;
     if (options && options.time) {
@@ -1054,15 +1065,18 @@ var LineChart =
       this.removeAllSeries();
     }
     var series = [];
+    var dataFormat;
     if ("y" in json) { // means we have percent
+      dataFormat = "percents";
       for (i in json.x) {
         var time  = json.x[i];
-        var percent = json.y[i] * 100.0;
+        var percent = json.y[i];
         if (json.count[i] > 0)
           series.push({date: new Date(time * 1000), value: percent});
       }
     }
     else {
+      dataFormat = "counts";
       for (i in json.x) {
         var time  = json.x[i];
         //time = time - 4 * 60 * 60; // hack: original data set is ahead by 4 hours.
@@ -1070,7 +1084,7 @@ var LineChart =
         series.push({date: new Date(time * 1000), value: count});
       }
     }
-    this.addSeries(this.seriesId, queryTerms, series, frameStart, frameEnd);
+    this.addSeries(this.seriesId, queryTerms, series, frameStart, frameEnd, dataFormat);
     this.seriesId += 1;
    }
 }
