@@ -31,9 +31,13 @@ var Map = {
   var styledMapOptions = {
     name: "Dark"
   };
-    var styledMapType = new google.maps.StyledMapType(darkBlueStyle,styledMapOptions);
-  var blankMap = new OpenLayers.Layer.OSM("Blank","data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=")
-    baseLayers = new Array(blankMap, darkMap, new OpenLayers.Layer.Google("Google Roadmap", {type: google.maps.MapTypeId.ROADMAP}, {isBaseLayer:true, transitionEffect: 'resize'}));
+    /*LOCAL var styledMapType = new google.maps.StyledMapType(darkBlueStyle,styledMapOptions);*/
+  var blankMap = new OpenLayers.Layer.OSM("Blank","data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=");
+  //var blankMap = new OpenLayers.Layer("Blank",{isBaseLayer:true});
+
+    baseLayers = new Array(blankMap);
+    /*LOCAL baseLayers = new Array(blankMap, darkMap, new OpenLayers.Layer.Google("Google Roadmap", {type: google.maps.MapTypeId.ROADMAP}, {isBaseLayer:true, transitionEffect: 'resize'}));*/
+    //baseLayers = new Array(blankMap, darkMap, new OpenLayers.Layer.Google("Google Roadmap", {type: google.maps.MapTypeId.ROADMAP}, {isBaseLayer:true, transitionEffect: 'resize'}));
 
     this.canvas = new OpenLayers.Map({
         div: "map",
@@ -54,16 +58,18 @@ var Map = {
         center: new OpenLayers.LonLat(0, 0),
         zoom: 2
     });
-    darkMap.mapObject.mapTypes.set('styled',styledMapType);
-    darkMap.mapObject.setMapTypeId('styled');
+    /*LOCAL darkMap.mapObject.mapTypes.set('styled',styledMapType);
+    darkMap.mapObject.setMapTypeId('styled');*/
     $(".gmnoprint").hide();
   }
 }
 
 var Vars = {
-    selectedVar: "tweets",
+    //selectedVar: "tweets",
+    selectedVar: "cdr",
     datasets: {
         tweets: {
+            host: "http://127.0.0.1:8080/",
             table: "tweets",
             time: "time",
             x: "goog_x",
@@ -71,6 +77,18 @@ var Vars = {
             aux: {
                 user: "sender_name",
                 text: "tweet_text",
+            },
+            layer: "point"
+        },
+        cdr: {
+            host: "http://127.0.0.1:8080/",
+            table: "cdr",
+            time: "epoch",
+            x: "goog_x",
+            y: "goog_y",
+            aux: {
+                user: "user_id",
+                text: "user_id",
             },
             layer: "point"
         },
@@ -118,10 +136,15 @@ var Settings = {
       if (id == "baseStatus") {
         Settings.baseOn = !Settings.baseOn;
         if (Settings.baseOn) {
+          //$(".olTileImage").css('backround-color', '');
+          //$('<style>.olTileImage {background: ""}</style>').appendTo('head');
           Map.canvas.setBaseLayer(Map.canvas.getLayersByName("Dark")[0]);
-        Map.canvas.fractionalZoom = false;
+          Map.canvas.fractionalZoom = false;
         }
         else {
+          //$('<style>.olTileImage {background: black}</style>').appendTo('head');
+
+
           Map.canvas.setBaseLayer(Map.canvas.getLayersByName("Blank")[0]);
         Map.canvas.fractionalZoom = true;
         }
@@ -212,7 +235,8 @@ var MapD = {
   geoCoder: null,
   queryTerms: [],
   user: null,
-  host: "http://mapd2.csail.mit.edu:8080/",
+  //host: "http://mapd2.csail.mit.edu:8080/",
+  //host: "http://mapd2.csail.mit.edu:8080/",
   dataStart: null,
   dataEnd: null,
   timeStart: null,
@@ -260,7 +284,7 @@ var MapD = {
 
 
     this.geoCoder = GeoCoder;
-    this.geoCoder.init();
+    //this.geoCoder.init();
     this.search = Search;
     this.search.init($("#curLoc"), this.geoCoder);
     this.services.pointMap = PointMap;
@@ -278,6 +302,16 @@ var MapD = {
 
   onMapMove: function() {
     this.services.timeChart.reload();
+  },
+
+  reloadByGraph: function(start, end) {
+    this.timeStart = start;
+    this.timeEnd = end;
+
+    // check if animating
+
+    this.services.pointMap.reload();
+    this.services.heatMap.reload();
   },
 
   setQueryTerms: function(queryTerms) {
@@ -524,7 +558,7 @@ var MapD = {
      }
     params.sql = "select min(" + this.curData.time + "), max(" + this.curData.time + ") from " + this.curData.table;
     //params.bbox = this.map.getExtent().toBBOX();
-    var url = this.host + '?' + buildURI(params);
+    var url = this.curData.host + '?' + buildURI(params);
     return url;
   },
 
@@ -555,7 +589,7 @@ var MapD = {
 
 var GeoCoder = {
   map: null,
-  _geocoder: new google.maps.Geocoder(),
+  /*LOCAL _geocoder: new google.maps.Geocoder(),*/
   address: null,
   status: null,
 
@@ -658,7 +692,7 @@ var Click = {
       console.log(this.params.sql);
       var pointBuffer = this.mapD.map.canvas.resolution * this.pixelTolerance;
       this.params.bbox = (lonlat.lon-pointBuffer).toString() + "," + (lonlat.lat-pointBuffer).toString() +"," + (lonlat.lon+pointBuffer).toString() + "," + (lonlat.lat+pointBuffer).toString(); 
-      var url = MapD.host + '?' + buildURI(this.params);
+      var url = MapD.curData.host + '?' + buildURI(this.params);
       return url;
   },
   onData: function(json) {
@@ -814,7 +848,7 @@ var HeatMap = {
     transparent: true
   },
   init: function () {
-     this.layer = new OpenLayers.Layer.WMS("Heat Map", this.mapD.host, this.getParams(), {singleTile: true, opacity: 0.55, ratio: 1.0, "displayInLayerSwitcher": false, removeBackBufferDelay: 0});
+     this.layer = new OpenLayers.Layer.WMS("Heat Map", this.mapD.curData.host, this.getParams(), {singleTile: true, opacity: 0.55, ratio: 1.0, "displayInLayerSwitcher": false, removeBackBufferDelay: 0});
     if (this.mapD.settings.heatOn) {
       this.layer.setVisibility(true);
     }
@@ -872,7 +906,7 @@ var PointMap = {
 
   init: function () {
     this.baseSql = "select " + MapD.curData.x + "," + MapD.curData.y +" from " + MapD.curData.table;
-    this.layer = new OpenLayers.Layer.WMS("Point Map", this.mapD.host, this.getParams(), {singleTile: true, ratio: 1.0, "displayInLayerSwitcher": false, removeBackBufferDelay: 0});
+    this.layer = new OpenLayers.Layer.WMS("Point Map", this.mapD.curData.host, this.getParams(), {singleTile: true, ratio: 1.0, "displayInLayerSwitcher": false, removeBackBufferDelay: 0});
     if (this.mapD.settings.pointOn) {
       this.layer.setVisibility(true);
     }
@@ -905,6 +939,7 @@ var LineChart =
   series: [],
   margins: null,
   brushExtent: null,
+  brush: null,
   xScale: null,
   yScale: null,
   xAxis: null,
@@ -933,6 +968,10 @@ var LineChart =
     this.xScale = d3.time.scale().range([0, this.width]);
     this.yScale = d3.scale.linear().range([this.height,0]);
 
+    this.brush=d3.svg.brush()
+      .x(this.xScale)
+      .on("brushend", $.proxy(this.brushdown,this));
+
     this.xAxis = d3.svg.axis()
         .scale(this.xScale)
         .orient("bottom")
@@ -945,6 +984,7 @@ var LineChart =
         .tickSize(-this.width)
         .tickPadding(6)
         .ticks(2);
+
 
     this.svg= this.container
       .attr("class", "chart")
@@ -961,7 +1001,29 @@ var LineChart =
       this.svg.append("g")
           .attr("class", "x axis")
           .attr("transform", "translate(0," + this.height + ")");
+
   },
+
+  brushdown: function() {
+    var brushChanged = (+this.brush.extent()[0] != +this.brushExtent[0] || +this.brush.extent()[1] != +this.brushExtent[1]);
+    if (brushChanged) {
+      var start = (this.brush.extent()[0]/ 1000).toFixed(0);
+    var end = (this.brush.extent()[1] / 1000).toFixed(0);
+      this.mapD.reloadByGraph(start, end);
+    }
+  },
+
+  setBrushExtent: function(extent) {
+    //console.log(extent);
+    this.brushExtent = extent;
+    this.brush.extent(this.brushExtent);
+    this.redrawBrush();
+  },
+
+  redrawBrush: function() {
+    this.svg.select(".brush").call(this.brush);
+  },
+
 
   getXDomain: function() {
     var xDomain = [d3.min(this.series, function(s) { return s.xDomain[0] }), 
@@ -998,6 +1060,22 @@ var LineChart =
     this.yScale.domain(this.getYDomain());
     console.log(this.getYDomain());
     console.log(data);
+  
+    if (this.brushExtent == null) {
+      this.brushExtent = [frameStart *1000, frameEnd * 1000];
+      this.brush.extent(this.brushExtent);
+
+      this.svg.append("g")
+        .attr("class", "brush")
+        .call(this.brush)
+        .attr("transform", "translate(0,0)")
+        .selectAll("rect")
+        .attr("y", 0)
+        .attr("height",this.height);
+    }
+
+
+
     this.svg.insert("path", "rect.pane")
         .attr("class", "line")
         .attr("id", "line" + id)
@@ -1045,7 +1123,7 @@ var LineChart =
       this.params.histEnd = options.time.timeEnd;
     }
     this.params.bbox = this.mapD.map.canvas.getExtent().toBBOX();
-    var url = this.mapD.host + '?' + buildURI(this.params);
+    var url = this.mapD.curData.host + '?' + buildURI(this.params);
     return url;
  },
 

@@ -332,6 +332,16 @@ rect.pane {
   pointer-events: all;
 }
 
+.brush {
+  stroke: #ec008c;
+  stroke-width: 2px;
+  stroke-linecap="round";
+  //stroke-width: 1px 3px 1px 3px;
+  fill: #faafdb;
+  fill-opacity: .15;
+  shape-rendering: crispEdges;
+}
+
 
 
 
