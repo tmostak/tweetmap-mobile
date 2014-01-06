@@ -545,6 +545,7 @@ var MapD = {
     this.services.heatMap.init();
     //$("#baseStatus").click();
     $("#pointStatus").click();
+    Map.canvas.fractionalZoom = true;
     this.services.timeChart.reload();
     this.map.canvas.events.register('moveend', this, this.onMapMove);
   },
