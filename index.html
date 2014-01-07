@@ -57,21 +57,26 @@
               <div id="submit-icon" class="sprites search"></div>
             </button>
           </form>
+          <div id="numPointsDisplay"><span id="numPointsSpan">1,343,823,231 tweets</span></div>
         </div>
         <div id="mapView">
           <!--<div id="menuLeft" class="{title:'Settings'}"<div class="voice {}"><a class="label" href="http://www.google.com">Google</a></div>></div>-->
           <div id="map"></div>
           <div id="settingsOverlay">
-              <div id="layerSelector" class="settings-group"></div> 
-              <div id="baseSettings" class="settings-group">
+              <div class="settings-section">
+                <div class="settings-header">Data</div>
+
+                <div id="layerSelector" class="settings-group"></div> 
+              </div>
+              <div class="settings-section">
+                <div class="settings-header">Views</div>
+                <!--<div id="baseSettings" class="settings-group">-->
+                <div id="viewSettings" class="settings-group">
               <div id="baseStatus" class="main-setting"><span>Basemap</span></div> 
-            </div>
-            <div id="pointSettings" class="settings-group">
               <div id="pointStatus" class="main-setting"><span>Pointmap</span></div> 
-            </div>
-            <div id="heatSettings" class="settings-group">
               <div id="heatStatus" class="main-setting"><span>HeatMap</span></div>
             </div>
+          </div>
           </div>
           <button id="settingsButton"></button>
           <!--<img id="settingsButton" src="img/gear-24.png" alt="Settings"></img>-->

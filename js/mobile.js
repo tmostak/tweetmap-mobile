@@ -11,6 +11,14 @@ var fixSize = function() {
     }
 };
 
+function numberWithCommas(n) {
+    return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+function stringNumberWithCommas(n) {
+    return n.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
 function buildURI(params) {
   var uri = '';
   for (key in params) 
@@ -74,7 +82,10 @@ var Vars = {
                 user: "sender_name",
                 text: "tweet_text",
             },
-            layer: "point"
+            layer: "point",
+            name: "tweets",
+            bbox: "-19813026.92,-8523983.06, 19813026.92,12002425.38",
+
         },
         "Cell Records": {
             host: "http://127.0.0.1:8080/",
@@ -86,7 +97,11 @@ var Vars = {
                 user: "user_id",
                 text: "user_id",
             },
-            layer: "point"
+            layer: "point",
+            name: "records",
+            //bbox: "-7920070,5210793,-7903215,5218035",
+            bbox: "-8020070,5200793,-7803215,5228035",
+            trange: {min: 1267310000, max: 1267402000}
         },
       }
   };
@@ -151,11 +166,14 @@ var Settings = {
       }
       else if (id == "pointStatus") {
         Settings.pointOn = !Settings.pointOn;
-        if (Settings.pointOn)
+        if (Settings.pointOn) {
           MapD.services.pointMap.layer.setVisibility(true);
+          $("#numPointsDisplay").show();
+        }
         else {
           console.log ("point off")
           MapD.services.pointMap.layer.setVisibility(false);
+          $("#numPointsDisplay").hide();
         }
       }
       else if (id == "heatStatus") {
@@ -204,7 +222,10 @@ var Settings = {
     //$(this.settingsOverlay).slideDown(200);
     $(this.settingsOverlay).animate({
       width: this.overlayWidth + 'px'},
-      {duration:200, queue: false}); $(".settings-group").show();
+      {duration:200, queue: false});
+    $(".settings-section").show();
+    //$(".settings-group").show();
+    //$(".settings-header").show();
       //width(this.overlayWidth);
   },
 
@@ -214,7 +235,9 @@ var Settings = {
     $(this.settingsOverlay).animate({
       width: "0px"},
       {duration:200})
-    $(".settings-group").hide();
+    $(".settings-section").hide();
+    //$(".settings-group").hide();
+    //$(".settings-header").hide();
 
     //$(this.settingsOverlay).hide();
   },
@@ -339,7 +362,7 @@ var MapD = {
   },
 
   resize: function () {
-    var topBarWidth = $("#topBar").width() - 130; // for promo and search
+    var topBarWidth = $("#topBar").width() - 180; // for promo and search
     console.log ("top width: " + topBarWidth);
       $("#submit").show();
     if (topBarWidth > 600) {
@@ -573,8 +596,29 @@ var MapD = {
     return url;
   },
 
+  getTimeAndGeoRangeURL: function () {
+    var params = {
+      request: "GetFeatureInfo"
+     };
+    params.sql = "select min(" + this.curData.time + "), max(" + this.curData.time + "), min(" + this.curData.x + "),min(" + this.curData.y + "),max(" + this.curData.x + "), max(" + this.curData.y + ")from " + this.curData.table;
+    //params.bbox = this.map.getExtent().toBBOX();
+    var url = this.curData.host + '?' + buildURI(params);
+    return url;
+  },
+
+
+
   getTimeBounds: function() {
-    $.getJSON(this.getTimeRangeURL()).done($.proxy(this.setTimeRange, this));
+    if ("trange" in this.curData) {
+      console.log(this.curData.trange);
+      this.setTimeRange({results: [this.curData.trange]});
+    }
+    else {
+      $.getJSON(this.getTimeRangeURL()).done($.proxy(this.setTimeRange, this));
+    }
+  },
+  getTimeAndGeoBounds: function() {
+    $.getJSON(this.getTimeAndGeoRangeURL()).done($.proxy(this.setTimeAndGeoRange, this));
   },
 
   setTimeRange: function(json) {
@@ -586,9 +630,11 @@ var MapD = {
     this.initMaps();
   },
 
+
   initMaps: function() {
     this.services.pointMap.init();
     this.services.heatMap.init();
+    this.map.canvas.zoomToExtent(new OpenLayers.Bounds(this.curData.bbox.split(',')));
     this.services.timeChart.reset();
     this.services.timeChart.init(d3.select($("#timeGraph").get(0)));
     //$("#baseStatus").click();:w
@@ -1031,6 +1077,7 @@ var PointMap = {
   mapD:MapD,
   layer: null,
   baseSql: null,
+  numPointsSpan: null,
   params: {
     request: "GetMap",
     sql: null,
@@ -1050,6 +1097,7 @@ var PointMap = {
   init: function (createNew) {
     this.baseSql = "select " + MapD.curData.x + "," + MapD.curData.y +" from " + MapD.curData.table;
     if (this.mapD.initted == false) {
+      this.numPointsSpan = $("#numPointsSpan");
       this.layer = new OpenLayers.Layer.WMS("Point Map", this.mapD.curData.host, this.getParams(), {singleTile: true, ratio: 1.0, "displayInLayerSwitcher": false, removeBackBufferDelay: 0});
       if (this.mapD.services.settings.pointOn) {
         this.layer.setVisibility(true);
@@ -1057,11 +1105,18 @@ var PointMap = {
       else {
         this.layer.setVisibility(false);
       }
+      this.layer.events.register("loadend", this, this.getNumPoints);
       this.mapD.map.canvas.addLayer(this.layer);
     }
     else {
       this.reload();
     }
+  },
+
+  getNumPoints: function() {
+    var commaNum = stringNumberWithCommas($.cookie('tweet_count'));
+    console.log(commaNum);
+    this.numPointsSpan.text(commaNum + " " + this.mapD.curData.name + " on map");
   },
 
   getParams: function(options) {
@@ -1322,8 +1377,6 @@ var LineChart =
     this.seriesId += 1;
    }
 }
-
-
 
 function init() {
   MapD.init();
