@@ -23,6 +23,32 @@ html, body, {
     }
 }
 
+.layer-choice {
+    height: 40px;
+    padding-top: 20px;
+    padding-left:10px;
+    border-bottom: 2px white;
+}
+
+.layer-choice span {
+    margin-top:10px;
+    font-size:16px;
+    text-align:center;
+    font-weight: bold;
+    color: white;
+}
+
+.layer-on {
+    background-color:#F6A904;
+}
+
+
+.in-setting span {
+    margin-top:5px;
+    font-weight: bold;
+    color: white;
+}
+
 
 #settingsOverlay {
     position: fixed;
@@ -63,6 +89,8 @@ html, body, {
 .setting-on {
    background-color:#13ADFE;
 }
+
+
 
 div#topBar { 
   position: fixed;

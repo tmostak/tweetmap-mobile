@@ -62,9 +62,9 @@ var Map = {
 
 var Vars = {
     //selectedVar: "tweets",
-    selectedVar: "cdr",
+    selectedVar: "Cell Records",
     datasets: {
-        tweets: {
+        "Tweets": {
             host: "http://127.0.0.1:8080/",
             table: "tweets",
             time: "time",
@@ -76,7 +76,7 @@ var Vars = {
             },
             layer: "point"
         },
-        cdr: {
+        "Cell Records": {
             host: "http://127.0.0.1:8080/",
             table: "cdr",
             time: "epoch",
@@ -100,10 +100,13 @@ var Settings = {
   heatToggled: false,
   overlayVisible: false,
   overlayWidth:0,
+  layerDiv: null,
   settingsOverlay: null,
   settingsButton: null,
 
   init: function(settingsOverlay, settingsButton) {
+    this.layerSelector = $("#layerSelector");
+    this.populateLayerSelector();
     this.settingsOverlay = settingsOverlay;
     this.settingsButton = settingsButton;
     this.resizeOverlay();
@@ -126,7 +129,8 @@ var Settings = {
     },this));
 
     $(".main-setting").click(function(e) {
-      //console.log(this);
+      console.log("main setting");
+      console.log(e);
       $(this).toggleClass("setting-on");
       var id = $(this).attr('id');
       if (id == "baseStatus") {
@@ -149,8 +153,10 @@ var Settings = {
         Settings.pointOn = !Settings.pointOn;
         if (Settings.pointOn)
           MapD.services.pointMap.layer.setVisibility(true);
-        else
+        else {
+          console.log ("point off")
           MapD.services.pointMap.layer.setVisibility(false);
+        }
       }
       else if (id == "heatStatus") {
         Settings.heatToggled = true;
@@ -169,6 +175,24 @@ var Settings = {
     });
 
   },
+  populateLayerSelector: function() {
+    for (key in Vars.datasets) {
+      $(this.layerSelector).append($("<div class='layer-choice " + ((key == Vars.selectedVar) ? " layer-on" : "") + "'><span>"+key+"</span></div>"));
+      }
+    $(".layer-choice").click($.proxy(this.onLayerClick,this));
+  },
+
+  onLayerClick: function(e) {
+    var layer = $(e.target).text();
+    if (layer != Vars.selectedVar) {
+      $(".layer-choice").removeClass("layer-on");
+      $(e.target).addClass("layer-on");
+      MapD.changeLayer(layer);
+      e.preventDefault();
+    }
+  },
+    
+
   getNumLayersVisible: function() {
     return (this.pointOn + this.heatOn);
   },
@@ -180,8 +204,7 @@ var Settings = {
     //$(this.settingsOverlay).slideDown(200);
     $(this.settingsOverlay).animate({
       width: this.overlayWidth + 'px'},
-      {duration:200, queue: false});
-    $(".settings-group").show();
+      {duration:200, queue: false}); $(".settings-group").show();
       //width(this.overlayWidth);
   },
 
@@ -242,6 +265,7 @@ var MapD = {
   timeEnd: null,
   queryTerms: [],
   termsAndUserQuery: "",
+  initted: false,
   services: {
     animation: null,
     settings: null,
@@ -264,34 +288,14 @@ var MapD = {
     this.map.init();
     this.resize();
 
-    /*
-  $("#menuLeft").buildMbExtruder({
-    positionFixed:true,
-    width:150,
-    sensibility:800,
-    position:"left", // left, right, bottom
-    extruderOpacity:1.0,
-    flapDim:300,
-    textOrientation:"bt", // or "tb" (top-bottom or bottom-top)
-              onExtOpen:function(){},
-    onExtContentLoad:function(){},
-    onExtClose:function(){},
-    hidePanelsOnClose:true,
-    autoCloseTime:0, // 0=never
-    slideTimer:300
-  });
-  */
-
-
     this.geoCoder = GeoCoder;
-    //this.geoCoder.init();
+    /*LOCALthis.geoCoder.init();*/
     this.search = Search;
     this.search.init($("#curLoc"), this.geoCoder);
     this.services.pointMap = PointMap;
     this.services.heatMap = HeatMap;
     this.services.animation = Animation;
     this.services.timeChart = LineChart;
-    this.services.timeChart.init(d3.select($("#timeGraph").get(0)));
     this.getTimeBounds();
     //this.services.timeChart.reload();
     this.services.click = Click;
@@ -311,6 +315,14 @@ var MapD = {
 
     this.services.pointMap.reload();
     this.services.heatMap.reload();
+  },
+
+  changeLayer: function(layer) {
+    this.vars.selectedVar = layer;
+    this.curData = this.vars.datasets[layer];
+    this.getTimeBounds();//don't create new layers
+
+
   },
 
   setQueryTerms: function(queryTerms) {
@@ -359,7 +371,7 @@ var MapD = {
     $("#timeGraph").css({height:timeBarHeight});
 
     MapD.map.canvas.updateSize();
-    $('div#timeGraph').empty();
+    //$('div#timeGraph').empty();
     if (this.services.timeChart != null) {
       this.services.timeChart.init(d3.select($("#timeGraph").get(0)));
       this.services.timeChart.reload();
@@ -577,12 +589,17 @@ var MapD = {
   initMaps: function() {
     this.services.pointMap.init();
     this.services.heatMap.init();
-    //$("#baseStatus").click();
-    $("#pointStatus").click();
-    Map.canvas.fractionalZoom = true;
-    this.services.timeChart.reload();
-    this.map.canvas.events.register('moveend', this, this.onMapMove);
+    this.services.timeChart.reset();
+    this.services.timeChart.init(d3.select($("#timeGraph").get(0)));
+    //$("#baseStatus").click();:w
+    if (!this.initted) {
+      $("#pointStatus").click();
+      Map.canvas.fractionalZoom = true;
+      this.map.canvas.events.register('moveend', this, this.onMapMove);
     this.services.animation.init(this.services.pointMap.layer, this.services.heatMap.layer, $("#playPauseButton"), $("#stopButton")); 
+    }
+    this.services.timeChart.reload();
+    this.initted = true;
   },
 
 };
@@ -849,14 +866,19 @@ var HeatMap = {
     transparent: true
   },
   init: function () {
-     this.layer = new OpenLayers.Layer.WMS("Heat Map", this.mapD.curData.host, this.getParams(), {singleTile: true, opacity: 0.55, ratio: 1.0, "displayInLayerSwitcher": false, removeBackBufferDelay: 0});
-    if (this.mapD.services.settings.heatOn) {
-      this.layer.setVisibility(true);
+    if (this.mapD.initted == false) {
+       this.layer = new OpenLayers.Layer.WMS("Heat Map", this.mapD.curData.host, this.getParams(), {singleTile: true, opacity: 0.55, ratio: 1.0, "displayInLayerSwitcher": false, removeBackBufferDelay: 0});
+      if (this.mapD.services.settings.heatOn) {
+        this.layer.setVisibility(true);
+      }
+      else {
+        this.layer.setVisibility(false);
+      }
+      this.mapD.map.canvas.addLayer(this.layer);
     }
     else {
-      this.layer.setVisibility(false);
+      this.reload();
     }
-    this.mapD.map.canvas.addLayer(this.layer);
   },
 
   getParams: function(options) {
@@ -1025,16 +1047,21 @@ var PointMap = {
     transparent: true,
   },
 
-  init: function () {
+  init: function (createNew) {
     this.baseSql = "select " + MapD.curData.x + "," + MapD.curData.y +" from " + MapD.curData.table;
-    this.layer = new OpenLayers.Layer.WMS("Point Map", this.mapD.curData.host, this.getParams(), {singleTile: true, ratio: 1.0, "displayInLayerSwitcher": false, removeBackBufferDelay: 0});
-    if (this.mapD.services.settings.pointOn) {
-      this.layer.setVisibility(true);
+    if (this.mapD.initted == false) {
+      this.layer = new OpenLayers.Layer.WMS("Point Map", this.mapD.curData.host, this.getParams(), {singleTile: true, ratio: 1.0, "displayInLayerSwitcher": false, removeBackBufferDelay: 0});
+      if (this.mapD.services.settings.pointOn) {
+        this.layer.setVisibility(true);
+      }
+      else {
+        this.layer.setVisibility(false);
+      }
+      this.mapD.map.canvas.addLayer(this.layer);
     }
     else {
-      this.layer.setVisibility(false);
+      this.reload();
     }
-    this.mapD.map.canvas.addLayer(this.layer);
   },
 
   getParams: function(options) {
@@ -1076,14 +1103,20 @@ var LineChart =
   },
 
   colors: ["#3366cc", "#dc3912", "#ff9900", "#109618", "#990099", "#3b3eac", "#0099c6", "#dd4477", "#66aa00", "#b82e2e", "#316395", "#994499", "#22aa99", "#aaaa11", "#6633cc", "#e67300"],
-  
+ 
+  reset: function() {
+    this.brushExtent = null;
+  },
 
   init: function(container) {
+    console.log("time init");
     this.container = container;
     var cont =  $($(container).get(0));
     this.margin = {top: 10, right: 15, bottom: 25, left: 45};
     this.contWidth = $("#timeBar").width() - 45 - this.margin.right ;//  cont.width();
     cont.width(this.contWidth);
+    cont.empty();
+
     this.contHeight = cont.height();
     this.width = this.contWidth - this.margin.left - this.margin.right;
     this.height = this.contHeight - this.margin.top - this.margin.bottom;
