@@ -21,16 +21,12 @@ function buildURI(params) {
 var Map = {
   baseLayers: null,
   canvas: null,
-
-
   init: function() {
-
-
-  var darkBlueStyle = [ { featureType: "all", elementType: "all", stylers: [ {visibility: "on" }, {saturation: -62}, {hue: "#00c3ff"}, {"gamma": 0.27}, {lightness: -55} ] } ];
-  var darkMap = new OpenLayers.Layer.Google("Dark", {type: 'styled'}, {isBaseLayer:true});
-  var styledMapOptions = {
-    name: "Dark"
-  };
+    var darkBlueStyle = [ { featureType: "all", elementType: "all", stylers: [ {visibility: "on" }, {saturation: -62}, {hue: "#00c3ff"}, {"gamma": 0.27}, {lightness: -55} ] } ];
+    var darkMap = new OpenLayers.Layer.Google("Dark", {type: 'styled'}, {isBaseLayer:true});
+    var styledMapOptions = {
+      name: "Dark"
+    };
     /*LOCAL var styledMapType = new google.maps.StyledMapType(darkBlueStyle,styledMapOptions);*/
   var blankMap = new OpenLayers.Layer.OSM("Blank","data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=");
   //var blankMap = new OpenLayers.Layer("Blank",{isBaseLayer:true});
@@ -130,7 +126,7 @@ var Settings = {
     },this));
 
     $(".main-setting").click(function(e) {
-      console.log(this);
+      //console.log(this);
       $(this).toggleClass("setting-on");
       var id = $(this).attr('id');
       if (id == "baseStatus") {
@@ -168,10 +164,13 @@ var Settings = {
         }
       }
       
-      console.log(e);
+      //console.log(e);
 
     });
 
+  },
+  getNumLayersVisible: function() {
+    return (this.pointOn + this.heatOn);
   },
 
   openOverlay: function() {
@@ -244,6 +243,7 @@ var MapD = {
   queryTerms: [],
   termsAndUserQuery: "",
   services: {
+    animation: null,
     settings: null,
     pointMap: null,
     heatMap: null,
@@ -257,8 +257,8 @@ var MapD = {
       setTimeout(fixSize, 700);
       setTimeout(fixSize, 1500);
     this.vars = Vars;
-    this.settings = Settings;
-    this.settings.init($("#settingsOverlay"), $("#settingsButton"));
+    this.services.settings = Settings;
+    this.services.settings.init($("#settingsOverlay"), $("#settingsButton"));
     this.curData = this.vars.datasets[this.vars.selectedVar];
     this.map = Map;
     this.map.init();
@@ -289,14 +289,13 @@ var MapD = {
     this.search.init($("#curLoc"), this.geoCoder);
     this.services.pointMap = PointMap;
     this.services.heatMap = HeatMap;
+    this.services.animation = Animation;
     this.services.timeChart = LineChart;
-    this.services.timeChart.init(d3.select($("#timeBar").get(0)));
+    this.services.timeChart.init(d3.select($("#timeGraph").get(0)));
     this.getTimeBounds();
     //this.services.timeChart.reload();
     this.services.click = Click;
     this.services.click.init();
-
-
 
   },
 
@@ -357,16 +356,16 @@ var MapD = {
     var timeBarHeight = Math.round(Math.min(windowHeight * 0.2, 70));
     console.log("Time Bar Height: " + timeBarHeight);
     $("#mapView").css({bottom:timeBarHeight});
-    $("#timeBar").css({height:timeBarHeight});
+    $("#timeGraph").css({height:timeBarHeight});
 
     MapD.map.canvas.updateSize();
-    $('div#timeBar').empty();
+    $('div#timeGraph').empty();
     if (this.services.timeChart != null) {
-      this.services.timeChart.init(d3.select($("#timeBar").get(0)));
+      this.services.timeChart.init(d3.select($("#timeGraph").get(0)));
       this.services.timeChart.reload();
     }
 
-    MapD.settings.resizeOverlay();
+    MapD.services.settings.resizeOverlay();
   },
 
   parseQueryExpression: function(str) {
@@ -434,7 +433,7 @@ var MapD = {
             searchString = "tweet_text ilike '"  
         }
         else {
-          console.log("At end quote");
+          //console.log("At end quote");
           expectOperand = false;
           if (searchString[searchString.length -1] == ' ') {
             searchString = searchString.substr(0,searchString.length-1) + "'";
@@ -475,7 +474,7 @@ var MapD = {
       query += this.curData.time + " >= " + timeStart + " and ";
     if (timeEnd)
       query += this.curData.time + " <= " + timeEnd + " and ";
-    console.log(query);
+    //console.log(query);
     return query;
   },
 
@@ -483,9 +482,9 @@ var MapD = {
     var query = ""; 
     if (queryTerms.length) {
       //queryTerms = this.parseQueryTerms(queryTerms);
-      console.log("Now doing parse Expression: ");
+      //console.log("Now doing parse Expression: ");
       queryTerms = this.parseQueryExpression(queryTerms);
-      console.log(queryTerms);
+      //console.log(queryTerms);
       query += queryTerms + " and ";
     }
     if (user)
@@ -496,7 +495,7 @@ var MapD = {
   getWhere: function(options) {
     var timeStart = this.timeStart;
     var timeEnd = this.timeEnd;
-    console.log(timeStart);
+    //console.log(timeStart);
     var queryTerms = this.queryTerms;
     var splitQuery = false;
     var queryTerms = this.queryTerms;
@@ -569,7 +568,8 @@ var MapD = {
   setTimeRange: function(json) {
     this.dataStart = json.results[0].min;
     this.dataEnd = json.results[0].max;
-    this.timeEnd = Math.round((this.dataEnd-this.dataStart)*1.01 + this.dataStart);
+    this.timeEnd = Math.round((this.dataEnd-this.dataStart)*0.98 + this.dataStart);
+    //this.timeEnd = this.dataEnd; 
     this.timeStart = Math.max(this.dataEnd - 864000,  Math.round((this.dataEnd-this.dataStart)*.01 + this.dataStart));
     this.initMaps();
   },
@@ -582,6 +582,7 @@ var MapD = {
     Map.canvas.fractionalZoom = true;
     this.services.timeChart.reload();
     this.map.canvas.events.register('moveend', this, this.onMapMove);
+    this.services.animation.init(this.services.pointMap.layer, this.services.heatMap.layer, $("#playPauseButton"), $("#stopButton")); 
   },
 
 };
@@ -599,7 +600,7 @@ var GeoCoder = {
   },
 
   geocode: function(address) {
-   console.log("at geocode");
+   //console.log("at geocode");
     this.address = address;
     this._geocoder.geocode({'address': address}, $.proxy(this.onGeoCoding, this));
   },
@@ -619,7 +620,7 @@ var GeoCoder = {
     var ne = viewport.getNorthEast();
     var sw = viewport.getSouthWest();
     var bounds = new OpenLayers.Bounds(sw.lng(), sw.lat(), ne.lng(), ne.lat());
-    console.log(bounds);
+    //console.log(bounds);
     var proj = new OpenLayers.Projection("EPSG:4326");
     bounds.transform(proj, this.map.getProjectionObject());
     $(document).trigger({type: 'geocodeend', bounds: bounds});
@@ -676,7 +677,7 @@ var Click = {
     this.clickControl.activate();
   },
   handleClick: function(e) {
-    console.log("at handleclick");
+    //console.log("at handleclick");
     $.getJSON(this.getParams(e)).done($.proxy(this.onData,this));
   },
   getParams: function(e) {
@@ -689,7 +690,7 @@ var Click = {
     this.params.sql += " from " + MapD.curData.table + MapD.getWhere();
       var lonlat = this.mapD.map.canvas.getLonLatFromPixel(e.xy);
       this.params.sql += " ORDER BY orddist(point(" + MapD.curData.x + "," + MapD.curData.y +"), point(" + lonlat.lon +"," + lonlat.lat + ")) LIMIT 1";
-      console.log(this.params.sql);
+      //console.log(this.params.sql);
       var pointBuffer = this.mapD.map.canvas.resolution * this.pixelTolerance;
       this.params.bbox = (lonlat.lon-pointBuffer).toString() + "," + (lonlat.lat-pointBuffer).toString() +"," + (lonlat.lon+pointBuffer).toString() + "," + (lonlat.lat+pointBuffer).toString(); 
       var url = MapD.curData.host + '?' + buildURI(this.params);
@@ -765,8 +766,8 @@ var Search = {
 
     $(document).on('propertychange keyup input paste', 'input.search-input', function() {
       var io = $(this).val().length ? 1: 0;
-      console.log("at icon clear");
-      console.log(io);
+      //console.log("at icon clear");
+      //console.log(io);
 
       $(this).next('.iconClear').stop().fadeTo(300,io);
       }).on('click', '.iconClear', function() {
@@ -798,12 +799,12 @@ var Search = {
       this.mapD.setTermsAndUserQuery(terms,user);
       if (this.zoomToChanged) {
         this.zoomTo = zoomTo;
-        console.log("about to zoom");
+        //console.log("about to zoom");
         this.geoCoder.geocode(this.zoomTo);
         return false;
       }
       var hasQuery = terms != "" || user != "";
-      this.mapD.settings.toggleHeatmap(terms != "");
+      this.mapD.services.settings.toggleHeatmap(terms != "");
       this.mapD.reload();
       return false;
 
@@ -815,12 +816,12 @@ var Search = {
           navigator.geolocation.getCurrentPosition(this.zoomToPosition);
       }
       else{ 
-        console.log("geolocation not supported!")
+        //console.log("geolocation not supported!")
       }
      },
 
      zoomToPosition: function(position) {
-      console.log(position);
+      //console.log(position);
       var center = new OpenLayers.LonLat(position.coords.longitude, position.coords.latitude).transform(new OpenLayers.Projection("EPSG:4326"), new OpenLayers.Projection("EPSG:900913"));
       MapD.map.canvas.setCenter(center, 16);
 
@@ -849,7 +850,7 @@ var HeatMap = {
   },
   init: function () {
      this.layer = new OpenLayers.Layer.WMS("Heat Map", this.mapD.curData.host, this.getParams(), {singleTile: true, opacity: 0.55, ratio: 1.0, "displayInLayerSwitcher": false, removeBackBufferDelay: 0});
-    if (this.mapD.settings.heatOn) {
+    if (this.mapD.services.settings.heatOn) {
       this.layer.setVisibility(true);
     }
     else {
@@ -883,6 +884,126 @@ var HeatMap = {
   }
 };
 
+var Animation = {
+  mapD: MapD,
+  pointLayer: null,
+  heatLayer:null,
+  playPauseButton: null,
+  stopButton: null,
+  heatMax: null,
+  oldRadius: null,
+  playing: false,
+  numFrames: 60.0,
+  animStart: null,
+  animEnd: null,
+  frameStep: null,
+  frameWidth: null,
+  prevTime: null,
+  frameWait: 80, // milliseconds - minimum
+  numLayersLoaded: 0,
+
+  init: function(pointLayer, heatLayer, playPauseButton, stopButton) {
+    this.pointLayer = pointLayer;
+    this.heatLayer = heatLayer;
+    this.pointLayer.events.register("loadend", this, this.layerLoadEnd);
+    this.heatLayer.events.register("loadend", this, this.layerLoadEnd);
+    this.playPauseButton = playPauseButton;
+    this.stopButton = stopButton;
+    $(this.playPauseButton).click($.proxy(this.playPauseFunc, this));
+    $(this.stopButton).click($.proxy(this.stopFunc, this));
+  },
+
+  layerLoadEnd: function () {
+    if (this.playing == true) {
+      var numLayersVisible = this.mapD.services.settings.getNumLayersVisible(); 
+      this.numLayersLoaded++;
+      if (this.numLayersLoaded >= numLayersVisible) {
+          var curTime = new Date().getTime();
+          this.numLayersLoaded = 0;
+          var timeDiff = curTime - this.prevTime;
+          if (timeDiff <  this.frameWait) {
+              var waitTime = this.frameWait - timeDiff;
+              setTimeout($.proxy(this.animFunc,this),waitTime);
+          }
+          else
+              this.animFunc();
+      }
+    }
+  },
+
+  isAnimating: function() {
+    return (this.animStart != null);
+  },
+
+  animFunc: function() {
+     if (this.frameEnd < this.animEnd) {
+        this.prevTime = new Date().getTime();
+        var options = {time: {timeStart: Math.floor(this.frameStart), timeEnd: Math.floor(this.frameEnd)}, heatMax: this.heatMax}; 
+       //var graphOptions = {time: {timestart: Math.floor(this.frameStart), timeend: Math.floor(this.frameEnd)}, heatMax: this.heatMax}; 
+      this.frameStart += this.frameStep;
+      this.frameEnd += this.frameStep;
+      this.mapD.services.timeChart.setBrushExtent([this.frameStart * 1000, this.frameEnd * 1000]);
+      this.mapD.services.pointMap.reload(options);
+      this.mapD.services.heatMap.reload(options);
+    }
+    else {
+      this.stopFunc();
+    }
+  },
+
+  playPauseFunc: function () {
+    if (this.playing == false) {
+      this.playing = true;
+      this.playPauseButton.removeClass("play-icon").addClass("pause-icon");
+      if (this.animStart == null) { // won't trigger if paused
+        this.animStart = this.mapD.dataStart;
+        this.animEnd = this.mapD.dataEnd;
+        this.frameStep = (this.animEnd - this.animStart) / this.numFrames;
+        this.prevTime = 0;
+        //this.frameWidth = this.frameStep * 4.0;
+        this.frameWidth = this.mapD.timeEnd - this.mapD.timeStart;
+        //if (this.frameWidth > (this.animEnd-this.animStart)*0.5)
+          //this.frameWidth = 21600;
+        this.frameStart = this.animStart;
+        this.frameEnd = this.animStart + this.frameWidth;
+        this.heatMax = parseFloat($.cookie('max_value')) * 10.0;
+        var numPoints = parseInt($.cookie('tweet_count'));
+        this.oldRadius = this.mapD.services.pointMap.params.radius;
+        if (this.oldRadius == -1) {
+            var radius = 2;
+            if (numPoints > 200000)
+                radius = 0;
+            else if (numPoints > 10000)
+                radius = 1;
+            this.mapD.services.pointMap.params.radius = radius;
+        }
+      }
+      this.animFunc();
+
+    }
+    else {
+      this.playing = false;
+      this.playPauseButton.removeClass("pause-icon").addClass("play-icon");
+    }
+  },
+
+  stopFunc: function() {
+    console.log("at stop");
+    if (this.animStart != null) { //meaning its stopped or playing
+      this.animStart = null;
+      this.animEnd = null;
+      this.animStep = null;
+      this.numLayersLoaded = 0;
+      this.playing = false;
+      this.playPauseButton.removeClass("pause-icon").addClass("play-icon");
+      this.mapD.services.pointMap.params.radius = this.oldRadius;
+      this.mapD.services.timeChart.setBrushExtent([this.mapD.timeStart * 1000, this.mapD.timeEnd * 1000]);
+      this.mapD.services.pointMap.reload();
+      this.mapD.services.heatMap.reload();
+    }
+  }
+}
+
 
 var PointMap = {
   mapD:MapD,
@@ -907,7 +1028,7 @@ var PointMap = {
   init: function () {
     this.baseSql = "select " + MapD.curData.x + "," + MapD.curData.y +" from " + MapD.curData.table;
     this.layer = new OpenLayers.Layer.WMS("Point Map", this.mapD.curData.host, this.getParams(), {singleTile: true, ratio: 1.0, "displayInLayerSwitcher": false, removeBackBufferDelay: 0});
-    if (this.mapD.settings.pointOn) {
+    if (this.mapD.services.settings.pointOn) {
       this.layer.setVisibility(true);
     }
     else {
@@ -919,7 +1040,7 @@ var PointMap = {
   getParams: function(options) {
     this.params.sql = this.baseSql; 
     this.params.sql += this.mapD.getWhere(options);
-    console.log(this.params.sql);
+    //console.log(this.params.sql);
     return this.params;
   },
 
@@ -960,9 +1081,10 @@ var LineChart =
   init: function(container) {
     this.container = container;
     var cont =  $($(container).get(0));
-    this.contWidth = cont.width();
-    this.contHeight = cont.height();
     this.margin = {top: 10, right: 15, bottom: 25, left: 45};
+    this.contWidth = $("#timeBar").width() - 45 - this.margin.right ;//  cont.width();
+    cont.width(this.contWidth);
+    this.contHeight = cont.height();
     this.width = this.contWidth - this.margin.left - this.margin.right;
     this.height = this.contHeight - this.margin.top - this.margin.bottom;
     this.xScale = d3.time.scale().range([0, this.width]);
@@ -1058,8 +1180,8 @@ var LineChart =
     this.series.push({id: id, name: name, xDomain: xDomain, yDomain: yDomain, data: data, line: line, color: color});
     this.xScale.domain(this.getXDomain());
     this.yScale.domain(this.getYDomain());
-    console.log(this.getYDomain());
-    console.log(data);
+    //console.log(this.getYDomain());
+    //console.log(data);
   
     if (this.brushExtent == null) {
       this.brushExtent = [frameStart *1000, frameEnd * 1000];
@@ -1111,8 +1233,8 @@ var LineChart =
     }
     //debugger;
     var queryArray = this.mapD.getWhere(options);
-    console.log("query array");
-    console.log(queryArray);
+    //console.log("query array");
+    //console.log(queryArray);
     if (queryArray[0] != "")
       this.params.sql += "," + queryArray[0];
     this.params.sql += " from " + this.mapD.curData.table + queryArray[1];

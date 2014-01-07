@@ -77,11 +77,26 @@ div#topBar {
   box-shadow: 2px 0 3px rgba(0,0,0,.25);
 }
 
+div#animPanel {
+    position:relative;
+    float:left;
+    height:100%;
+    width:45px;
+
+}
+
+div#timeGraph {
+    position:relative;
+    float:left;
+    height: 100%;
+}
+
+
 div#timeBar {
   position: fixed;
   height: 70px;
   bottom: 0;
-  left: 0;
+  left: 0px;
   right: 0;
   z-index:1000;
   background-color: #232323;
@@ -342,7 +357,37 @@ rect.pane {
   shape-rendering: crispEdges;
 }
 
+.anim-input {
+    webkit-box-shadow: 0 0 2px rgba(50,50,50,.25);
+    box-shadow: 0 0 2px rgba(100,100,100,.25);
+    position:relative;
+    border: none !important;
+    margin: 8px 8px 3px 10px;
+    border-radius: 3px;
+    background-size: cover;
+    cursor: pointer;
+}
 
+.play-icon {
+    border: none !important;
+    background: url('../img/play-green-20px.png') no-repeat center center;
+    width:40px;
+    height:20px;
+}
+
+.pause-icon {
+    border: none !important;
+    background: url('../img/pause-blue-20px.png') no-repeat center center;
+    width:40px;
+    height:20px;
+}
+    
+.stop-icon {
+    border: none !important;
+    background: url('../img/stop-pink-20px.png') no-repeat center center;
+    width:40px;
+    height:20px;
+}
 
 
 
