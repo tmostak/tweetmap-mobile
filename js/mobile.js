@@ -1,3 +1,6 @@
+//host: "http://127.0.0.1:8080/",
+
+
 $(document).ready(function() {init()});
 
 // Get rid of address bar on iphone/ipod
@@ -31,16 +34,19 @@ var Map = {
   canvas: null,
   init: function() {
     var darkBlueStyle = [ { featureType: "all", elementType: "all", stylers: [ {visibility: "on" }, {saturation: -62}, {hue: "#00c3ff"}, {"gamma": 0.27}, {lightness: -55} ] } ];
+    /* LOCAL var darkMap = new OpenLayers.Layer.Google("Dark", {type: 'styled'}, {isBaseLayer:true});*/
     var darkMap = new OpenLayers.Layer.Google("Dark", {type: 'styled'}, {isBaseLayer:true});
     var styledMapOptions = {
       name: "Dark"
     };
-    /*LOCAL var styledMapType = new google.maps.StyledMapType(darkBlueStyle,styledMapOptions);*/
+    /* LOCAL var styledMapType = new google.maps.StyledMapType(darkBlueStyle,styledMapOptions); */
+    var styledMapType = new google.maps.StyledMapType(darkBlueStyle,styledMapOptions);
   var blankMap = new OpenLayers.Layer.OSM("Blank","data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=");
   //var blankMap = new OpenLayers.Layer("Blank",{isBaseLayer:true});
 
-    baseLayers = new Array(blankMap);
-    /*LOCAL baseLayers = new Array(blankMap, darkMap, new OpenLayers.Layer.Google("Google Roadmap", {type: google.maps.MapTypeId.ROADMAP}, {isBaseLayer:true, transitionEffect: 'resize'}));*/
+    //baseLayers = new Array(blankMap);
+    // *LOCAL baseLayers = new Array(blankMap, darkMap, new OpenLayers.Layer.Google("Google Roadmap", {type: google.maps.MapTypeId.ROADMAP}, {isBaseLayer:true, transitionEffect: 'resize'}));
+    baseLayers = new Array(blankMap, darkMap, new OpenLayers.Layer.Google("Google Roadmap", {type: google.maps.MapTypeId.ROADMAP}, {isBaseLayer:true, transitionEffect: 'resize'}));
     //baseLayers = new Array(blankMap, darkMap, new OpenLayers.Layer.Google("Google Roadmap", {type: google.maps.MapTypeId.ROADMAP}, {isBaseLayer:true, transitionEffect: 'resize'}));
 
     this.canvas = new OpenLayers.Map({
@@ -52,8 +58,8 @@ var Map = {
                 dragPanOptions: {
                     enableKinetic: true
                 }
-            })
-            //new OpenLayers.Control.Zoom()
+            }),
+            new OpenLayers.Control.Zoom()
         ],
         projection: "EPSG:900913",
         maxResolution:156543.0339,
@@ -62,15 +68,18 @@ var Map = {
         center: new OpenLayers.LonLat(0, 0),
         zoom: 2
     });
-    /*LOCAL darkMap.mapObject.mapTypes.set('styled',styledMapType);
-    darkMap.mapObject.setMapTypeId('styled');*/
+    darkMap.mapObject.mapTypes.set('styled',styledMapType);
+    darkMap.mapObject.setMapTypeId('styled');
+    //*LOCALdarkMap.mapObject.mapTypes.set('styled',styledMapType);
+    //darkMap.mapObject.setMapTypeId('styled');
     $(".gmnoprint").hide();
   }
 }
 
 var Vars = {
+    //selectedVar: "China Tweets",
     //selectedVar: "tweets",
-    selectedVar: "Cell Records",
+    selectedVar: "Seattle Crime",
     datasets: {
         "Tweets": {
             host: "http://127.0.0.1:8080/",
@@ -87,15 +96,30 @@ var Vars = {
             bbox: "-19813026.92,-8523983.06, 19813026.92,12002425.38",
 
         },
-        "Cell Records": {
+        "China Tweets": {
             host: "http://127.0.0.1:8080/",
+            table: "china_tweets",
+            time: "time",
+            x: "goog_x",
+            y: "goog_y",
+            aux: {
+                user: "sender_name",
+                text: "tweet_text",
+            },
+            layer: "point",
+            name: "tweets",
+            bbox: "6469208.0, 922951.4, 16375721.6, 8025431.0",
+
+        },
+        "Cell Records": {
+            //host: "http://127.0.0.1:8080/",
+            host: "http://192.168.1.104:8080/",
             table: "cdr",
             time: "epoch",
             x: "goog_x",
             y: "goog_y",
             aux: {
-                user: "user_id",
-                text: "user_id",
+                //user: "user_id",
             },
             layer: "point",
             name: "records",
@@ -103,6 +127,47 @@ var Vars = {
             bbox: "-8020070,5200793,-7803215,5228035",
             trange: {min: 1267310000, max: 1267402000}
         },
+        "Boston Taxi Pickups": {
+            host: "http://127.0.0.1:8080/",
+            time: "pickuptime",
+            x: "pickup_x",
+            y: "pickup_y",
+            table: "trips",
+            aux: {
+              text: "pickupaddress",
+            },
+            layer: "point",
+            name: "pickups",
+            bbox: "-7920070,5210793,-7903215,5218035"
+        },
+        "Boston Taxi Dropoffs": {
+            host: "http://127.0.0.1:8080/",
+            time: "droptime",
+            x: "drop_x",
+            y: "drop_y",
+            table: "trips",
+            aux: {
+              text: "dropaddress",
+            },
+            layer: "point",
+            name: "dropoffs",
+            bbox: "-7920070,5210793,-7903215,5218035"
+        },
+        "Seattle Crime": {
+            host: "http://127.0.0.1:8080/",
+            time: "time",
+            x: "goog_x",
+            y: "goog_y",
+            table: "seattle_police",
+            aux: {
+              text: "description",
+            },
+            layer: "point",
+            name: "crimes",
+            bbox: "-13683078.0,6004644.0, -13543059.0,6079018.0",
+            trange: {min: 1268310000, max: 1388402000}
+          }
+
       }
   };
  
@@ -312,7 +377,8 @@ var MapD = {
     this.resize();
 
     this.geoCoder = GeoCoder;
-    /*LOCALthis.geoCoder.init();*/
+    this.geoCoder.init();
+    // *LOCAL this.geoCoder.init();
     this.search = Search;
     this.search.init($("#curLoc"), this.geoCoder);
     this.services.pointMap = PointMap;
@@ -389,6 +455,7 @@ var MapD = {
     var windowHeight = $(window).height();
     console.log("Window height: " + windowHeight);
     var timeBarHeight = Math.round(Math.min(windowHeight * 0.2, 70));
+    //var timeBarHeight = 120; 
     console.log("Time Bar Height: " + timeBarHeight);
     $("#mapView").css({bottom:timeBarHeight});
     $("#timeGraph").css({height:timeBarHeight});
@@ -461,11 +528,11 @@ var MapD = {
         inQuote = !inQuote;
         if (inQuote) {
           if (atNot) {
-            searchString = "tweet_text not ilike '"  
+            searchString = this.curData.aux.text + " not ilike '"  
             atNot = false;
           }
           else
-            searchString = "tweet_text ilike '"  
+            searchString = this.curData.aux.text +" ilike '"  
         }
         else {
           //console.log("At end quote");
@@ -489,12 +556,12 @@ var MapD = {
             returnString += " AND ";
             //return null;
           }
-          if (atNot) {
-            returnString += "tweet_text not ilike '" + token + "'";
+          if (atNot)  {
+            returnString += this.curData.aux.text + " not ilike '" + token + "'";
             atNot = false;
           }
           else  {
-            returnString += "tweet_text ilike '" + token + "'";
+            returnString += this.curData.aux.text + " like '" + token + "'";
           }
           expectOperand = false;
         }
@@ -625,8 +692,9 @@ var MapD = {
     this.dataStart = json.results[0].min;
     this.dataEnd = json.results[0].max;
     this.timeEnd = Math.round((this.dataEnd-this.dataStart)*0.98 + this.dataStart);
+    this.timeStart = Math.round((this.dataEnd-this.dataStart)*.02 + this.dataStart);
     //this.timeEnd = this.dataEnd; 
-    this.timeStart = Math.max(this.dataEnd - 864000,  Math.round((this.dataEnd-this.dataStart)*.01 + this.dataStart));
+    //this.timeStart = Math.max(this.dataEnd - 864000,  Math.round((this.dataEnd-this.dataStart)*.01 + this.dataStart));
     this.initMaps();
   },
 
@@ -635,7 +703,7 @@ var MapD = {
     this.services.pointMap.init();
     this.services.heatMap.init();
     this.map.canvas.zoomToExtent(new OpenLayers.Bounds(this.curData.bbox.split(',')));
-    this.services.timeChart.reset();
+    this.services.timeChart.brushReset();
     this.services.timeChart.init(d3.select($("#timeGraph").get(0)));
     //$("#baseStatus").click();:w
     if (!this.initted) {
@@ -653,7 +721,8 @@ var MapD = {
 
 var GeoCoder = {
   map: null,
-  /*LOCAL _geocoder: new google.maps.Geocoder(),*/
+  geocoder: new google.maps.Geocoder(),
+  /* LOCAL geocoder: new google.maps.Geocoder(),*/
   address: null,
   status: null,
 
@@ -1015,7 +1084,9 @@ var Animation = {
       this.mapD.services.heatMap.reload(options);
     }
     else {
-      this.stopFunc();
+        this.stopFunc();
+        //this.frameStart = this.animStart;
+        //this.frameEnd = this.animStart + this.frameWidth;
     }
   },
 
@@ -1030,7 +1101,8 @@ var Animation = {
         this.prevTime = 0;
         //this.frameWidth = this.frameStep * 4.0;
         this.frameWidth = this.mapD.timeEnd - this.mapD.timeStart;
-        //if (this.frameWidth > (this.animEnd-this.animStart)*0.5)
+        if (this.frameWidth > (this.animEnd-this.animStart)*0.5)
+          this.frameWidth = (this.animEnd-this.animStart)*0.1; 
           //this.frameWidth = 21600;
         this.frameStart = this.animStart;
         this.frameEnd = this.animStart + this.frameWidth;
@@ -1085,11 +1157,15 @@ var PointMap = {
     width: null,
     height: null,
     layers: "point",
-    r: 88,
-    g: 252,
-    b: 208,
+    r: 255,
+    g: 131,
+    b: 0,
+    //r: 88,
+    //g: 252,
+    //b: 208,
     rand:0,
-    radius: -1 ,
+    //radius: -1 ,
+    radius: 1 ,
     format: "image/png",
     transparent: true,
   },
@@ -1116,7 +1192,7 @@ var PointMap = {
   getNumPoints: function() {
     var commaNum = stringNumberWithCommas($.cookie('tweet_count'));
     console.log(commaNum);
-    this.numPointsSpan.text(commaNum + " " + this.mapD.curData.name + " on map");
+    this.numPointsSpan.text(commaNum + " " + this.mapD.curData.name);
   },
 
   getParams: function(options) {
@@ -1143,6 +1219,7 @@ var LineChart =
   margins: null,
   brushExtent: null,
   brush: null,
+  initted: false,
   xScale: null,
   yScale: null,
   xAxis: null,
@@ -1159,11 +1236,12 @@ var LineChart =
 
   colors: ["#3366cc", "#dc3912", "#ff9900", "#109618", "#990099", "#3b3eac", "#0099c6", "#dd4477", "#66aa00", "#b82e2e", "#316395", "#994499", "#22aa99", "#aaaa11", "#6633cc", "#e67300"],
  
-  reset: function() {
+  brushReset: function() {
     this.brushExtent = null;
   },
 
   init: function(container) {
+    this.initted = false;
     console.log("time init");
     this.container = container;
     var cont =  $($(container).get(0));
@@ -1274,16 +1352,18 @@ var LineChart =
     if (this.brushExtent == null) {
       this.brushExtent = [frameStart *1000, frameEnd * 1000];
       this.brush.extent(this.brushExtent);
-
-      this.svg.append("g")
-        .attr("class", "brush")
-        .call(this.brush)
-        .attr("transform", "translate(0,0)")
-        .selectAll("rect")
-        .attr("y", 0)
-        .attr("height",this.height);
     }
-
+      console.log("initted: " + this.initted);
+      if (this.initted == false) {
+        this.svg.append("g")
+          .attr("class", "brush")
+          .call(this.brush)
+          .attr("transform", "translate(0,0)")
+          .selectAll("rect")
+          .attr("y", 0)
+          .attr("height",this.height);
+      }
+      this.initted = true;
 
 
     this.svg.insert("path", "rect.pane")
@@ -1382,5 +1462,8 @@ function init() {
   MapD.init();
 }
 
+//var Choropleth = {
+
+    
 
 
