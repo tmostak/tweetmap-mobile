@@ -1,4 +1,5 @@
 //host: "http://127.0.0.1:8080/",
+var LOCAL = true;
 
 
 $(document).ready(function() {init()});
@@ -34,19 +35,23 @@ var Map = {
   canvas: null,
   init: function() {
     var darkBlueStyle = [ { featureType: "all", elementType: "all", stylers: [ {visibility: "on" }, {saturation: -62}, {hue: "#00c3ff"}, {"gamma": 0.27}, {lightness: -55} ] } ];
-    /* LOCAL var darkMap = new OpenLayers.Layer.Google("Dark", {type: 'styled'}, {isBaseLayer:true});*/
-    var darkMap = new OpenLayers.Layer.Google("Dark", {type: 'styled'}, {isBaseLayer:true});
+    var darkMap;
+    if (!LOCAL)  
+      darkMap = new OpenLayers.Layer.Google("Dark", {type: 'styled'}, {isBaseLayer:true});
     var styledMapOptions = {
       name: "Dark"
     };
-    /* LOCAL var styledMapType = new google.maps.StyledMapType(darkBlueStyle,styledMapOptions); */
-    var styledMapType = new google.maps.StyledMapType(darkBlueStyle,styledMapOptions);
+    var styledMapType;
+    if (!LOCAL)
+      styledMapType = new google.maps.StyledMapType(darkBlueStyle,styledMapOptions);
   var blankMap = new OpenLayers.Layer.OSM("Blank","data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=");
   //var blankMap = new OpenLayers.Layer("Blank",{isBaseLayer:true});
-
-    //baseLayers = new Array(blankMap);
-    // *LOCAL baseLayers = new Array(blankMap, darkMap, new OpenLayers.Layer.Google("Google Roadmap", {type: google.maps.MapTypeId.ROADMAP}, {isBaseLayer:true, transitionEffect: 'resize'}));
-    baseLayers = new Array(blankMap, darkMap, new OpenLayers.Layer.Google("Google Roadmap", {type: google.maps.MapTypeId.ROADMAP}, {isBaseLayer:true, transitionEffect: 'resize'}));
+    
+    var baseLayers;
+    if (LOCAL)
+      baseLayers = new Array(blankMap);
+    else
+      baseLayers = new Array(blankMap, darkMap, new OpenLayers.Layer.Google("Google Roadmap", {type: google.maps.MapTypeId.ROADMAP}, {isBaseLayer:true, transitionEffect: 'resize'}));
     //baseLayers = new Array(blankMap, darkMap, new OpenLayers.Layer.Google("Google Roadmap", {type: google.maps.MapTypeId.ROADMAP}, {isBaseLayer:true, transitionEffect: 'resize'}));
 
     this.canvas = new OpenLayers.Map({
@@ -68,8 +73,10 @@ var Map = {
         center: new OpenLayers.LonLat(0, 0),
         zoom: 2
     });
-    darkMap.mapObject.mapTypes.set('styled',styledMapType);
-    darkMap.mapObject.setMapTypeId('styled');
+    if (!LOCAL) {
+      darkMap.mapObject.mapTypes.set('styled',styledMapType);
+      darkMap.mapObject.setMapTypeId('styled');
+    }
     //*LOCALdarkMap.mapObject.mapTypes.set('styled',styledMapType);
     //darkMap.mapObject.setMapTypeId('styled');
     $(".gmnoprint").hide();
@@ -377,8 +384,8 @@ var MapD = {
     this.resize();
 
     this.geoCoder = GeoCoder;
-    this.geoCoder.init();
-    // *LOCAL this.geoCoder.init();
+    if (!LOCAL)
+      this.geoCoder.init();
     this.search = Search;
     this.search.init($("#curLoc"), this.geoCoder);
     this.services.pointMap = PointMap;
@@ -721,12 +728,14 @@ var MapD = {
 
 var GeoCoder = {
   map: null,
-  geocoder: new google.maps.Geocoder(),
+  geocoder: null,
   /* LOCAL geocoder: new google.maps.Geocoder(),*/
   address: null,
   status: null,
 
   init: function() {
+    if (!LOCAL)
+      this.geocoder =  new google.maps.Geocoder();
     this.map = Map.canvas;
     $(document).on('geocodeend', $.proxy(this.onGeoCodeEnd, this));
   },
@@ -1459,6 +1468,8 @@ var LineChart =
 }
 
 function init() {
+  if (navigator.onLine)
+    LOCAL=false;
   MapD.init();
 }
 
