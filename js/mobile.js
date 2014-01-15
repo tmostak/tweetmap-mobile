@@ -126,7 +126,7 @@ var Vars = {
             x: "goog_x",
             y: "goog_y",
             aux: {
-                //user: "user_id",
+                user: "user_id",
             },
             layer: "point",
             name: "records",
@@ -416,6 +416,7 @@ var MapD = {
   changeLayer: function(layer) {
     this.vars.selectedVar = layer;
     this.curData = this.vars.datasets[layer];
+    $('<div id="location" class="search"><input id="zoomInput" class="search-input" type="text" name="zoom" data-role="none" placeholder=" Where"/><span class="iconClear">X</span></div>').prependTo($("#search"));
     this.getTimeBounds();//don't create new layers
 
 
@@ -470,6 +471,7 @@ var MapD = {
     MapD.map.canvas.updateSize();
     //$('div#timeGraph').empty();
     if (this.services.timeChart != null) {
+      this.services.timeChart.brushReset();
       this.services.timeChart.init(d3.select($("#timeGraph").get(0)));
       this.services.timeChart.reload();
     }
@@ -1469,7 +1471,7 @@ var LineChart =
 
 function init() {
   if (navigator.onLine)
-    LOCAL=false;
+    LOCAL=true;
   MapD.init();
 }
 
