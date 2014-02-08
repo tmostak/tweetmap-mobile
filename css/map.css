@@ -151,6 +151,11 @@ form#search {
   padding: 0;
 }
 
+div#optionalSearch {
+    position: relative;
+    float: left;
+}
+
 .search-input {
   position: relative;
   float: left;
@@ -162,7 +167,7 @@ form#search {
   border: 1px solid #232323;
   webkit-box-shadow: 0 0 2px rgba(255,255,255,.25);
   box-shadow: 0 0 2px rgba(255,255,255,.25);
-  display: none;
+  //display: none;
 }
 
 button#submit { 

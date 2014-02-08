@@ -1,5 +1,5 @@
 //host: "http://127.0.0.1:8080/",
-var LOCAL = true;
+var LOCAL = false;
 
 
 $(document).ready(function() {init()});
@@ -29,6 +29,12 @@ function buildURI(params) {
     uri += key + '=' + params[key] + '&';
   return encodeURI(uri.substring(0, uri.length - 1));
 };
+
+ function project (pos){
+      var point= Map.canvas.getViewPortPxFromLonLat(new OpenLayers.LonLat(pos[0], pos[1])
+        .transform("EPSG:4326", "EPSG:900913"));
+      return [point.x, point.y];
+    };
 
 var Map = {
   baseLayers: null,
@@ -86,7 +92,7 @@ var Map = {
 var Vars = {
     //selectedVar: "China Tweets",
     //selectedVar: "tweets",
-    selectedVar: "Seattle Crime",
+    selectedVar: "Tweets",
     datasets: {
         "Tweets": {
             host: "http://127.0.0.1:8080/",
@@ -95,8 +101,8 @@ var Vars = {
             x: "goog_x",
             y: "goog_y",
             aux: {
-                user: "sender_name",
-                text: "tweet_text",
+                user: {"var": "sender_name","label": "user"},
+                text: {"var": "tweet_text", "label":"What"}
             },
             layer: "point",
             name: "tweets",
@@ -110,8 +116,8 @@ var Vars = {
             x: "goog_x",
             y: "goog_y",
             aux: {
-                user: "sender_name",
-                text: "tweet_text",
+                user: {"var": "sender_name","label": "user"},
+                text: {"var": "tweet_text", "label":"What"}
             },
             layer: "point",
             name: "tweets",
@@ -141,7 +147,7 @@ var Vars = {
             y: "pickup_y",
             table: "trips",
             aux: {
-              text: "pickupaddress",
+              text: {"var": "pickupaddress", "label": "Address"}
             },
             layer: "point",
             name: "pickups",
@@ -154,7 +160,7 @@ var Vars = {
             y: "drop_y",
             table: "trips",
             aux: {
-              text: "dropaddress",
+              text: {"var": "dropaddress", "label": "Address"}
             },
             layer: "point",
             name: "dropoffs",
@@ -167,7 +173,7 @@ var Vars = {
             y: "goog_y",
             table: "seattle_police",
             aux: {
-              text: "description",
+              text: {"var": "description", "label": "Crime"}
             },
             layer: "point",
             name: "crimes",
@@ -278,6 +284,7 @@ var Settings = {
       $(".layer-choice").removeClass("layer-on");
       $(e.target).addClass("layer-on");
       MapD.changeLayer(layer);
+
       e.preventDefault();
     }
   },
@@ -366,6 +373,7 @@ var MapD = {
     settings: null,
     pointMap: null,
     heatMap: null,
+    choropleth: null,
     timeChart: null,
     search: null,
     click: null,
@@ -386,10 +394,11 @@ var MapD = {
     this.geoCoder = GeoCoder;
     if (!LOCAL)
       this.geoCoder.init();
-    this.search = Search;
-    this.search.init($("#curLoc"), this.geoCoder);
+    this.services.search = Search;
+    this.services.search.init($("#curLoc"), this.geoCoder);
     this.services.pointMap = PointMap;
     this.services.heatMap = HeatMap;
+    this.services.choropleth = Choropleth;
     this.services.animation = Animation;
     this.services.timeChart = LineChart;
     this.getTimeBounds();
@@ -416,8 +425,11 @@ var MapD = {
   changeLayer: function(layer) {
     this.vars.selectedVar = layer;
     this.curData = this.vars.datasets[layer];
-    $('<div id="location" class="search"><input id="zoomInput" class="search-input" type="text" name="zoom" data-role="none" placeholder=" Where"/><span class="iconClear">X</span></div>').prependTo($("#search"));
+    //$('<div id="location" class="search"><input id="zoomInput" class="search-input" type="text" name="zoom" data-role="none" placeholder=" Where"/><span class="iconClear">X</span></div>').prependTo($("#search"));
     this.getTimeBounds();//don't create new layers
+    //this.resize();
+    this.formatTopBar();
+    this.services.search.init($("#curLoc"), this.geoCoder);
 
 
   },
@@ -435,7 +447,31 @@ var MapD = {
     this.user = user;
   },
 
+  formatTopBar: function() {
+    var topBarWidth = $("#topBar").width() - 180; // for promo and search
+    $("#zoomInput").show();
+    $("#submit").show();
+    var numSearchBars = 1;
+    for (key in this.curData.aux)
+      numSearchBars++;
+    console.log("Num search bars: " + numSearchBars);
+    var inputWidth = topBarWidth / numSearchBars - 100;
+    console.log("input width: " + inputWidth);
+    $("#optionalSearch").empty();
+    if ("text" in this.curData.aux)
+          $('<div id="terms" class="search"><input id="termsInput" class="search-input" type="text" name="terms" data-role="none" placeholder=" ' + this.curData.aux.text.label +'"/><span class="iconClear">X</span></div>').appendTo($("#optionalSearch"));
+    if ("user" in this.curData.aux)
+        $('<div id="user" class="search"><input id="userInput" class="search-input" type="text" name="user" data-role="none" placeholder=" Who"/><span class="iconClear">X</span></div>').appendTo($("#optionalSearch"));
+    $("input.search-input").width(inputWidth);
+  },
+
+
+
+  
+
   resize: function () {
+    this.formatTopBar();
+    /*
     var topBarWidth = $("#topBar").width() - 180; // for promo and search
     console.log ("top width: " + topBarWidth);
       $("#submit").show();
@@ -460,6 +496,7 @@ var MapD = {
       $("input.search-input").width(inputWidth);
       $("#termsInput").show();
     }
+    */
     var windowHeight = $(window).height();
     console.log("Window height: " + windowHeight);
     var timeBarHeight = Math.round(Math.min(windowHeight * 0.2, 70));
@@ -537,11 +574,11 @@ var MapD = {
         inQuote = !inQuote;
         if (inQuote) {
           if (atNot) {
-            searchString = this.curData.aux.text + " not ilike '"  
+            searchString = this.curData.aux.text.var + " not ilike '"  
             atNot = false;
           }
           else
-            searchString = this.curData.aux.text +" ilike '"  
+            searchString = this.curData.aux.text.var +" ilike '"  
         }
         else {
           //console.log("At end quote");
@@ -566,11 +603,11 @@ var MapD = {
             //return null;
           }
           if (atNot)  {
-            returnString += this.curData.aux.text + " not ilike '" + token + "'";
+            returnString += this.curData.aux.text.var + " not ilike '" + token + "'";
             atNot = false;
           }
           else  {
-            returnString += this.curData.aux.text + " like '" + token + "'";
+            returnString += this.curData.aux.text.var + " ilike '" + token + "'";
           }
           expectOperand = false;
         }
@@ -720,6 +757,7 @@ var MapD = {
       Map.canvas.fractionalZoom = true;
       this.map.canvas.events.register('moveend', this, this.onMapMove);
     this.services.animation.init(this.services.pointMap.layer, this.services.heatMap.layer, $("#playPauseButton"), $("#stopButton")); 
+    this.services.choropleth.init();
     }
     this.services.timeChart.reload();
     this.initted = true;
@@ -731,7 +769,6 @@ var MapD = {
 var GeoCoder = {
   map: null,
   geocoder: null,
-  /* LOCAL geocoder: new google.maps.Geocoder(),*/
   address: null,
   status: null,
 
@@ -827,9 +864,9 @@ var Click = {
 
     this.params.sql = "select " + MapD.curData.x + "," + MapD.curData.y + "," + MapD.curData.time;
     if ("user" in MapD.curData.aux)
-      this.params.sql += "," + MapD.curData.aux.user;
+      this.params.sql += "," + MapD.curData.aux.user.var;
     if ("text" in MapD.curData.aux)
-      this.params.sql += "," + MapD.curData.aux.text;
+      this.params.sql += "," + MapD.curData.aux.text.var;
     this.params.sql += " from " + MapD.curData.table + MapD.getWhere();
       var lonlat = this.mapD.map.canvas.getLonLatFromPixel(e.xy);
       this.params.sql += " ORDER BY orddist(point(" + MapD.curData.x + "," + MapD.curData.y +"), point(" + lonlat.lon +"," + lonlat.lat + ")) LIMIT 1";
@@ -858,9 +895,9 @@ var Click = {
       var user = null;
       var text = null
       if ("text" in MapD.curData.aux) 
-        text = clickData[MapD.curData.aux.text];
+        text = clickData[MapD.curData.aux.text.var];
       if ("user" in MapD.curData.aux) 
-        user =  clickData[MapD.curData.aux.user];
+        user =  clickData[MapD.curData.aux.user.var];
       if (text != null)
         content.html(text);
       if (user != null)
@@ -1175,8 +1212,8 @@ var PointMap = {
     //g: 252,
     //b: 208,
     rand:0,
-    //radius: -1 ,
-    radius: 1 ,
+    radius: -1 ,
+    //radius: 1 ,
     format: "image/png",
     transparent: true,
   },
@@ -1467,16 +1504,79 @@ var LineChart =
     this.addSeries(this.seriesId, queryTerms, series, frameStart, frameEnd, dataFormat);
     this.seriesId += 1;
    }
-}
+};
+
+var Choropleth = {
+  mapD: MapD,
+  map: null,
+  svg: null,
+  overlay: null,
+  g: null,
+  path: null,
+  curLayer: null,
+  isTopo: true,
+
+  init: function() {
+    this.overlay = new OpenLayers.Layer.Vector("choroLayer");
+    this.map = this.mapD.map.canvas;
+
+     this.overlay.afterAdd = $.proxy(function() {
+      //console.log("After add!");
+      var div = d3.selectAll("#" + this.overlay.div.id);
+      div.selectAll("svg").remove();
+      this.svg = div.append("svg").attr("class", "choropleth");
+      this.g = this.svg.append("g");
+      //this.path = d3.geo.path().projection(project);
+      this.colorScale = d3.scale.quantize().range(["rgb(255,255,229)","rgb(255,247,188)", "rgb(254,227,145)", "rgb(254,196,79)", "rgb(254,153,41)", "rgb(236,112,20)", "rgb(204,76,2)", "rgb(140,45,4)"]);
+      this.map.events.register("moveend", this.map, $.proxy(this.reset,this));
+    }, this);
+    this.map.addLayer(this.overlay);
+  },
+
+  setLayer: function(layer, isTopo) {
+    if (layer != this.curLayer) {
+      this.curLayer = layer; 
+      this.isTopo = isTopo;
+      this.addGeoData();
+    }
+  },
+
+  addGeoData: function() {
+      d3.select("g").remove();
+      this.g = this.svg.append("g");
+      var g = this.g;
+      this.path = d3.geo.path().projection(project);
+      var path = this.path;
+      var file = "data/" + this.curLayer + ".json";
+      if (this.isTopo) {
+        d3.json(file, function(error,json) {
+
+          Choropleth.features = g.selectAll("path")
+            .data(topojson.feature(json, json.objects.layer1).features)
+            .enter().append("path")
+            .attr("d",path);
+          Choropleth.reset();
+        });
+      }
+   },
+
+   reset: function() {
+     var size = this.map.getSize();
+     this.svg.attr("width", size.w)
+       .attr("height", size.h);
+     if (this.features != null)
+      this.features.attr("d", this.path);
+   }
+};
 
 function init() {
   if (navigator.onLine)
+    LOCAL=false;
+  else
     LOCAL=true;
   MapD.init();
 }
 
-//var Choropleth = {
 
-    
 
 
