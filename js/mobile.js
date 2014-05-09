@@ -86,10 +86,10 @@ var Map = {
 var Vars = {
     //selectedVar: "China Tweets",
     //selectedVar: "tweets",
-    selectedVar: "Seattle Crime",
+    selectedVar: "Tweets",
     datasets: {
         "Tweets": {
-            host: "http://127.0.0.1:8080/",
+          host: "http://mapd.csail.mit.edu:8080/",
             table: "tweets",
             time: "time",
             x: "goog_x",
@@ -103,6 +103,7 @@ var Vars = {
             bbox: "-19813026.92,-8523983.06, 19813026.92,12002425.38",
 
         },
+        /* 
         "China Tweets": {
             host: "http://127.0.0.1:8080/",
             table: "china_tweets",
@@ -174,6 +175,7 @@ var Vars = {
             bbox: "-13683078.0,6004644.0, -13543059.0,6079018.0",
             trange: {min: 1268310000, max: 1388402000}
           }
+        */
 
       }
   };
@@ -568,7 +570,7 @@ var MapD = {
             atNot = false;
           }
           else  {
-            returnString += this.curData.aux.text + " like '" + token + "'";
+            returnString += this.curData.aux.text + " ilike '" + token + "'";
           }
           expectOperand = false;
         }
@@ -982,9 +984,9 @@ var HeatMap = {
     height: null,
     layers: "heatmap",
     maxval: "auto", 
-    min: 0.2,
-    blur: 25,
-    level: 50,
+    min: 20.0,
+    blur: 10,
+    level: 40,
     colorramp: "green_red",
     format: "image/png",
     transparent: true
@@ -1017,6 +1019,7 @@ var HeatMap = {
     if (queryArray[0])
       this.params.sql += "," + queryArray[0];
     this.params.sql += " from " + this.mapD.curData.table + queryArray[1];
+    console.log(this.params.sql);
 
     if (options.heatMax != undefined && options.heatMax != null && isNaN(options.heatMax) == false) 
       this.params.maxval = options.heatMax;
@@ -1173,8 +1176,8 @@ var PointMap = {
     //g: 252,
     //b: 208,
     rand:0,
-    //radius: -1 ,
-    radius: 1 ,
+    radius: -1 ,
+    //radius: 1 ,
     format: "image/png",
     transparent: true,
   },
